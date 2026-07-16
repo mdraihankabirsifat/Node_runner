@@ -29,6 +29,71 @@ function normalizeInput(input) {
   return { x: horizontal / magnitude, y: vertical / magnitude };
 }
 
+function normalizeGameMode(value, fallback = 'human') {
+  return ['bot', 'human', 'mix'].includes(value) ? value : fallback;
+}
+
+function normalizeComposition(settings, humanCount, current = {}) {
+  const fallbackMode = current.gameMode
+    ?? (settings.fillBots === false ? 'human' : 'bot');
+  const gameMode = normalizeGameMode(settings.gameMode, fallbackMode);
+
+  if (gameMode === 'bot') {
+    const maxPlayers = clamp(
+      Number(settings.maxPlayers) || current.maxPlayers || BALANCE.minPlayers,
+      BALANCE.minPlayers,
+      BALANCE.maxPlayers,
+    );
+    return {
+      gameMode,
+      humanSlots: 1,
+      botCount: maxPlayers - 1,
+      maxPlayers,
+    };
+  }
+
+  if (gameMode === 'human') {
+    const requestedHumans = Number(settings.humanPlayers ?? settings.maxPlayers)
+      || current.humanSlots
+      || BALANCE.minPlayers;
+    const humanSlots = clamp(
+      Math.max(requestedHumans, humanCount, BALANCE.minPlayers),
+      BALANCE.minPlayers,
+      BALANCE.maxPlayers,
+    );
+    return {
+      gameMode,
+      humanSlots,
+      botCount: 0,
+      maxPlayers: humanSlots,
+    };
+  }
+
+  const requestedHumans = Number(settings.humanPlayers)
+    || current.humanSlots
+    || BALANCE.minMixedHumans;
+  const humanSlots = clamp(
+    Math.max(requestedHumans, humanCount, BALANCE.minMixedHumans),
+    BALANCE.minMixedHumans,
+    BALANCE.maxPlayers,
+  );
+  const requestedBots = Number(settings.botCount);
+  let botCount = Number.isFinite(requestedBots)
+    ? requestedBots
+    : (current.botCount ?? Math.max(0, BALANCE.minPlayers - humanSlots));
+  botCount = clamp(botCount, 0, BALANCE.maxPlayers - humanSlots);
+  if (humanSlots + botCount < BALANCE.minPlayers) {
+    botCount = BALANCE.minPlayers - humanSlots;
+  }
+
+  return {
+    gameMode,
+    humanSlots,
+    botCount,
+    maxPlayers: humanSlots + botCount,
+  };
+}
+
 export class GameRoom {
   constructor(io, code, settings, hostSocket) {
     this.io = io;
@@ -36,15 +101,14 @@ export class GameRoom {
     this.createdAt = Date.now();
     this.lastActivityAt = Date.now();
     this.hostId = hostSocket.id;
-    this.maxPlayers = clamp(
-      Number(settings.maxPlayers) || 6,
-      BALANCE.minPlayers,
-      BALANCE.maxPlayers,
-    );
+    const composition = normalizeComposition(settings, 1);
+    this.gameMode = composition.gameMode;
+    this.humanSlots = composition.humanSlots;
+    this.botCount = composition.botCount;
+    this.maxPlayers = composition.maxPlayers;
     this.arenaType = ['polygon', 'football', 'circle'].includes(settings.arenaType)
       ? settings.arenaType
       : 'polygon';
-    this.fillBots = settings.fillBots !== false;
     this.status = 'lobby';
     this.players = new Map();
     this.arena = buildArena(this.arenaType, this.maxPlayers, this.maxPlayers);
@@ -81,6 +145,7 @@ export class GameRoom {
       alive: true,
       occupiedNodeId: null,
       lastNodeId: null,
+      nodeReentryLocks: new Map(),
       zone: 'field',
       input: { up: false, down: false, left: false, right: false },
       lastInputSeq: 0,
@@ -95,7 +160,8 @@ export class GameRoom {
     if (this.status !== 'lobby') {
       return { ok: false, error: 'The match has already started.' };
     }
-    if (this.players.size >= this.maxPlayers) {
+    const humanCount = [...this.players.values()].filter((player) => !player.isBot).length;
+    if (humanCount >= this.humanSlots) {
       return { ok: false, error: 'The room is full.' };
     }
     if (this.players.has(socket.id)) {
@@ -148,29 +214,27 @@ export class GameRoom {
       return { ok: false, error: 'Only the host can change lobby settings.' };
     }
 
-    const requestedPlayers = clamp(
-      Number(settings.maxPlayers) || this.maxPlayers,
-      BALANCE.minPlayers,
-      BALANCE.maxPlayers,
-    );
     const humanCount = [...this.players.values()].filter((player) => !player.isBot).length;
-    this.maxPlayers = Math.max(requestedPlayers, humanCount);
+    const composition = normalizeComposition(settings, humanCount, this);
+    this.gameMode = composition.gameMode;
+    this.humanSlots = composition.humanSlots;
+    this.botCount = composition.botCount;
+    this.maxPlayers = composition.maxPlayers;
     this.arenaType = ['polygon', 'football', 'circle'].includes(settings.arenaType)
       ? settings.arenaType
       : this.arenaType;
-    this.fillBots = settings.fillBots !== false;
     this.arena = buildArena(this.arenaType, this.maxPlayers, this.maxPlayers);
     this.touch();
     this.broadcastLobby();
     return { ok: true };
   }
 
-  fillRemainingWithBots() {
+  fillConfiguredBots() {
     for (const [id, player] of this.players) {
       if (player.isBot) this.players.delete(id);
     }
 
-    while (this.players.size < this.maxPlayers) {
+    for (let index = 0; index < this.botCount; index += 1) {
       const botIndex = this.botCounter % BOT_NAMES.length;
       const id = `bot-${this.code}-${this.botCounter}`;
       this.botCounter += 1;
@@ -192,14 +256,13 @@ export class GameRoom {
     }
 
     const humanCount = [...this.players.values()].filter((player) => !player.isBot).length;
-    if (this.fillBots) {
-      this.fillRemainingWithBots();
-    } else if (humanCount < this.maxPlayers) {
+    if (humanCount < this.humanSlots) {
       return {
         ok: false,
-        error: `Waiting for ${this.maxPlayers - humanCount} more player(s), or enable bot filling.`,
+        error: `Waiting for ${this.humanSlots - humanCount} more human player(s).`,
       };
     }
+    this.fillConfiguredBots();
 
     this.resetMatch();
     return { ok: true };
@@ -215,6 +278,7 @@ export class GameRoom {
       player.alive = true;
       player.occupiedNodeId = null;
       player.lastNodeId = null;
+      player.nodeReentryLocks.clear();
       player.zone = 'field';
       player.vx = 0;
       player.vy = 0;
@@ -263,11 +327,21 @@ export class GameRoom {
     this.touch();
   }
 
+  isNodeLockedForPlayer(player, nodeId, now = Date.now()) {
+    const lockedUntil = player.nodeReentryLocks.get(nodeId);
+    if (!lockedUntil) return false;
+    if (now < lockedUntil) return true;
+    player.nodeReentryLocks.delete(nodeId);
+    return false;
+  }
+
   chooseBotTarget(bot, now) {
     const availableNodes = this.arena.nodes.filter(
-      (node) => !node.occupantId && node.id !== bot.lastNodeId,
+      (node) => !node.occupantId && !this.isNodeLockedForPlayer(bot, node.id, now),
     );
-    const anyFreeNodes = this.arena.nodes.filter((node) => !node.occupantId);
+    const anyFreeNodes = this.arena.nodes.filter(
+      (node) => !node.occupantId && !this.isNodeLockedForPlayer(bot, node.id, now),
+    );
     const center = this.arena.centerZone;
     const centerTarget = center.type === 'circle'
       ? { x: center.x, y: center.y }
@@ -416,7 +490,7 @@ export class GameRoom {
     }
   }
 
-  releaseExitedNodes() {
+  releaseExitedNodes(now = Date.now()) {
     for (const node of this.arena.nodes) {
       if (!node.occupantId) continue;
       const occupant = this.players.get(node.occupantId);
@@ -424,6 +498,9 @@ export class GameRoom {
         if (occupant) {
           occupant.occupiedNodeId = null;
           occupant.zone = 'field';
+          if (occupant.alive) {
+            occupant.nodeReentryLocks.set(node.id, now + BALANCE.nodeReentryLockMs);
+          }
         }
         node.occupantId = null;
       }
@@ -453,7 +530,33 @@ export class GameRoom {
     }
   }
 
-  claimFreeNodes() {
+  blockPlayerLockedNodes(now = Date.now()) {
+    for (const player of this.players.values()) {
+      if (!player.alive || player.occupiedNodeId) continue;
+      for (const [nodeId] of player.nodeReentryLocks) {
+        if (!this.isNodeLockedForPlayer(player, nodeId, now)) continue;
+        const node = this.arena.nodes.find((item) => item.id === nodeId);
+        if (!node) continue;
+
+        let dx = player.x - node.x;
+        let dy = player.y - node.y;
+        let distance = Math.hypot(dx, dy);
+        const minimum = node.radius + player.radius - 5;
+        if (distance >= minimum) continue;
+
+        if (distance < 0.001) {
+          dx = 1;
+          dy = 0;
+          distance = 1;
+        }
+        player.x = node.x + (dx / distance) * minimum;
+        player.y = node.y + (dy / distance) * minimum;
+        clampPlayerToArena(player, this.arena);
+      }
+    }
+  }
+
+  claimFreeNodes(now = Date.now()) {
     for (const node of this.arena.nodes) {
       if (node.occupantId) continue;
 
@@ -462,6 +565,7 @@ export class GameRoom {
           (player) =>
             player.alive &&
             !player.occupiedNodeId &&
+            !this.isNodeLockedForPlayer(player, node.id, now) &&
             distanceBetween(player, node) <= node.radius - 2,
         )
         .sort((a, b) => distanceBetween(a, node) - distanceBetween(b, node));
@@ -577,6 +681,7 @@ export class GameRoom {
     for (const node of this.arena.nodes) node.occupantId = null;
     for (const player of alivePlayers) {
       player.occupiedNodeId = null;
+      player.nodeReentryLocks.clear();
       player.zone = 'field';
       player.vx = 0;
       player.vy = 0;
@@ -605,9 +710,10 @@ export class GameRoom {
       this.updateBots(now);
       this.movePlayers(dt);
       this.resolvePlayerCollisions();
-      this.releaseExitedNodes();
+      this.releaseExitedNodes(now);
       this.blockOccupiedNodes();
-      this.claimFreeNodes();
+      this.blockPlayerLockedNodes(now);
+      this.claimFreeNodes(now);
       this.updateZonesAndStats(dt);
       this.evaluateEliminations();
     }
@@ -636,8 +742,10 @@ export class GameRoom {
       status: this.status,
       hostId: this.hostId,
       maxPlayers: this.maxPlayers,
+      gameMode: this.gameMode,
+      humanSlots: this.humanSlots,
+      botCount: this.botCount,
       arenaType: this.arenaType,
-      fillBots: this.fillBots,
       players: [...this.players.values()]
         .filter((player) => !player.isBot)
         .map((player) => ({
@@ -669,6 +777,9 @@ export class GameRoom {
       alive: player.alive,
       occupiedNodeId: player.occupiedNodeId,
       lastNodeId: player.lastNodeId,
+      nodeReentryLocks: [...player.nodeReentryLocks.entries()]
+        .filter(([, lockedUntil]) => lockedUntil > Date.now())
+        .map(([nodeId, lockedUntil]) => ({ nodeId, lockedUntil })),
       zone: player.zone,
       lastInputSeq: player.lastInputSeq,
       botMode: player.botMode,
@@ -687,6 +798,7 @@ export class GameRoom {
       winnerId: this.winnerId,
       maxHealth: BALANCE.maxHealth,
       maxTimer: BALANCE.maxTimer,
+      nodeReentryLockMs: BALANCE.nodeReentryLockMs,
       world: WORLD,
       arena: this.arena,
       players: [...this.players.values()].map((player) => this.serializePlayer(player)),

@@ -45,8 +45,15 @@
             <label class="field-label" for="player-name">Runner name</label>
             <input id="player-name" class="text-input" maxlength="16" value="Runner" autocomplete="off" />
 
+            <label class="field-label">Game type</label>
+            <div class="mode-tabs" id="game-mode-tabs">
+              <button class="mode-tab active" data-mode="bot">Bot</button>
+              <button class="mode-tab" data-mode="human">Human</button>
+              <button class="mode-tab" data-mode="mix">Mix</button>
+            </div>
+
             <div class="setting-grid">
-              <div>
+              <div id="standard-count-setting">
                 <label class="field-label" for="player-count">Total runners</label>
                 <div class="stepper">
                   <button id="count-minus" type="button">−</button>
@@ -64,6 +71,28 @@
               </div>
             </div>
 
+            <div id="mixed-count-settings" class="mixed-settings hidden">
+              <div class="setting-grid">
+                <div>
+                  <label class="field-label">Human runners</label>
+                  <div class="stepper">
+                    <button id="human-count-minus" type="button">-</button>
+                    <strong id="human-count-value">2</strong>
+                    <button id="human-count-plus" type="button">+</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="field-label">Bots</label>
+                  <div class="stepper">
+                    <button id="bot-count-minus" type="button">-</button>
+                    <strong id="bot-count-value">2</strong>
+                    <button id="bot-count-plus" type="button">+</button>
+                  </div>
+                </div>
+              </div>
+              <p id="mixed-total" class="composition-note">4 total runners</p>
+            </div>
+
             <button id="bots-button" class="primary-button large-button">
               <span class="button-icon">🤖</span>
               <span><strong>Play with bots</strong><small>Start instantly</small></span>
@@ -71,8 +100,8 @@
             </button>
 
             <div class="split-actions">
-              <button id="host-button" class="secondary-button">
-                <span>🌐</span><strong>Host game</strong><small>Create a room code</small>
+              <button id="host-button" class="secondary-button hidden">
+                <span>🌐</span><strong id="host-button-title">Host human game</strong><small id="host-button-subtitle">Create a room code</small>
               </button>
               <button id="join-button" class="secondary-button">
                 <span>🔑</span><strong>Join game</strong><small>Enter a host code</small>
@@ -120,13 +149,34 @@
             <div id="host-settings" class="host-settings hidden">
               <div class="setting-grid compact">
                 <label>
-                  <span class="field-label">Total runners</span>
+                  <span class="field-label">Game type</span>
+                  <select id="lobby-game-mode" class="select-input">
+                    <option value="human">Human</option>
+                    <option value="mix">Mix</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="field-label">Human runners</span>
                   <select id="lobby-player-count" class="select-input">
+                    <option value="2">2</option>
+                    <option value="3">3</option>
                     <option value="4">4</option>
                     <option value="5">5</option>
                     <option value="6" selected>6</option>
                     <option value="7">7</option>
                     <option value="8">8</option>
+                  </select>
+                </label>
+                <label id="lobby-bot-count-setting">
+                  <span class="field-label">Bots</span>
+                  <select id="lobby-bot-count" class="select-input">
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
                   </select>
                 </label>
                 <label>
@@ -138,11 +188,7 @@
                   </select>
                 </label>
               </div>
-              <label class="toggle-row">
-                <input id="fill-bots-toggle" type="checkbox" checked />
-                <span class="toggle-visual"></span>
-                <span><strong>Fill empty slots with bots</strong><small>Recommended for quick testing</small></span>
-              </label>
+              <p id="lobby-composition-note" class="composition-note"></p>
               <button id="start-game-button" class="primary-button large-button">
                 <span class="button-icon">⚡</span>
                 <span><strong>Start match</strong><small>Launch the arena</small></span>

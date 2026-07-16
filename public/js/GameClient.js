@@ -91,7 +91,7 @@ export class GameClient {
   async playBots(setup) {
     this.ui.setBusy(true);
     this.ui.showMenuError('');
-    const created = await this.emitWithAck('room:create', { ...setup, fillBots: true });
+    const created = await this.emitWithAck('room:create', setup);
     if (!created.ok) {
       this.ui.showMenuError(created.error);
       this.ui.setBusy(false);
@@ -110,7 +110,7 @@ export class GameClient {
   async hostGame(setup) {
     this.ui.setBusy(true);
     this.ui.showMenuError('');
-    const result = await this.emitWithAck('room:create', { ...setup, fillBots: true });
+    const result = await this.emitWithAck('room:create', setup);
     this.ui.setBusy(false);
     if (!result.ok) {
       this.ui.showMenuError(result.error);

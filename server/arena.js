@@ -64,6 +64,39 @@ function circlePoints(count, radius) {
   return points;
 }
 
+function polygonPerimeterPoints(vertices, count) {
+  if (count <= 0 || vertices.length === 0) return [];
+
+  const edges = vertices.map((start, index) => {
+    const end = vertices[(index + 1) % vertices.length];
+    return {
+      start,
+      end,
+      length: Math.hypot(end.x - start.x, end.y - start.y),
+    };
+  });
+  const perimeter = edges.reduce((sum, edge) => sum + edge.length, 0);
+  const points = [];
+
+  for (let index = 0; index < count; index += 1) {
+    let targetDistance = (index / count) * perimeter;
+    let edge = edges[0];
+    for (const candidate of edges) {
+      edge = candidate;
+      if (targetDistance <= candidate.length) break;
+      targetDistance -= candidate.length;
+    }
+
+    const progress = edge.length > 0 ? targetDistance / edge.length : 0;
+    points.push({
+      x: edge.start.x + (edge.end.x - edge.start.x) * progress,
+      y: edge.start.y + (edge.end.y - edge.start.y) * progress,
+    });
+  }
+
+  return points;
+}
+
 export function buildArena(arenaType, aliveCount, initialPlayerCount) {
   const activeNodeCount = Math.max(1, aliveCount - 1);
   const geometrySides = Math.max(3, aliveCount - 1);
@@ -115,7 +148,7 @@ export function buildArena(arenaType, aliveCount, initialPlayerCount) {
     if (activeNodeCount === geometrySides) {
       nodePositions = vertices.map((point) => ({ ...point }));
     } else {
-      nodePositions = circlePoints(activeNodeCount, radius);
+      nodePositions = polygonPerimeterPoints(vertices, activeNodeCount);
     }
     boundary = {
       type: 'polygon',

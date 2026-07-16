@@ -12,7 +12,9 @@ Build a fast top-down 2D competitive survival game in JavaScript. The game combi
 
 - If there are `P` alive players, there are `P - 1` active nodes.
 - Therefore, at least one runner cannot occupy a node.
-- Initial player count is configurable from 4 to 8.
+- Total match size is configurable from 4 to 8.
+- Human-only and bot matches use a minimum of 4 total runners.
+- Mixed matches require at least 2 human slots; bots may be 0 or more, and the combined total must be 4 to 8.
 - The polygon geometry never becomes smaller than a triangle.
 - With two runners remaining, the geometry is still triangular but only one active node exists.
 
@@ -38,6 +40,7 @@ Current implementation:
 - Other runners are physically blocked from entering an occupied node.
 - Reaching a node different from the player's previous activated node restores health to maximum.
 - Returning to the same node consecutively does not restore health.
+- Leaving a node locks that node for that player for 3 seconds without locking it for other players.
 - Staying in a node drains health quickly, forcing rotation.
 - Timer is paused while inside an owned node.
 
@@ -84,15 +87,16 @@ Current implementation:
 
 ### Play modes
 
-1. Play with bots
-2. Host a game
-3. Join a game with a five-character room code
+1. Bot: one local human plus bots, with 4 to 8 total runners
+2. Human: 4 to 8 human runners
+3. Mix: at least 2 humans plus an exact bot count, with 4 to 8 total runners
+4. Join a Human or Mix room with a five-character room code
 
 The host chooses:
 
-- Total runners
+- Game type
+- Human slots and exact bot count for mixed games
 - Arena type
-- Whether empty slots are filled with bots
 
 ## Current technology
 
@@ -163,7 +167,7 @@ Socket events:
 
 ## Current balance assumptions
 
-- Maximum timer: 150 seconds.
+- Maximum timer: 45 seconds.
 - Timer does not reset when a node is captured; it only pauses.
 - A new node resets health, not timer.
 - Health drains inside nodes to prevent camping.

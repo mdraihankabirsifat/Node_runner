@@ -264,10 +264,14 @@ export class Renderer {
   drawNodes(nodes) {
     const ctx = this.context;
     const playersById = new Map(this.snapshot.players.map((player) => [player.id, player]));
+    const localPlayer = playersById.get(this.localId);
 
     for (const node of nodes) {
       const occupant = node.occupantId ? playersById.get(node.occupantId) : null;
-      const color = occupant?.color ?? '#79f4b1';
+      const localLock = localPlayer?.nodeReentryLocks?.find((lock) => lock.nodeId === node.id);
+      const lockRemaining = Math.max(0, (localLock?.lockedUntil ?? 0) - Date.now());
+      const isLocallyLocked = !occupant && lockRemaining > 0;
+      const color = occupant?.color ?? (isLocallyLocked ? '#ffd166' : '#79f4b1');
       const pulse = 1 + Math.sin(this.time * 3.2 + node.x * 0.01) * 0.04;
 
       ctx.save();
@@ -293,7 +297,25 @@ export class Renderer {
       ctx.font = '900 15px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(occupant ? 'LOCKED' : 'NODE', 0, 1);
+      const label = occupant
+        ? 'LOCKED'
+        : isLocallyLocked
+          ? `WAIT ${(lockRemaining / 1000).toFixed(1)}`
+          : 'NODE';
+      ctx.fillText(label, 0, 1);
+
+      if (isLocallyLocked) {
+        const lockFraction = clamp(
+          lockRemaining / (this.snapshot.nodeReentryLockMs || 3000),
+          0,
+          1,
+        );
+        ctx.beginPath();
+        ctx.arc(0, 0, node.radius + 8, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * lockFraction);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(255, 209, 102, 0.9)';
+        ctx.stroke();
+      }
       ctx.restore();
     }
   }

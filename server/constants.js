@@ -7,6 +7,7 @@ export const WORLD = Object.freeze({
 
 export const BALANCE = Object.freeze({
   minPlayers: 4,
+  minMixedHumans: 2,
   maxPlayers: 8,
   playerRadius: 16,
   playerSpeed: 228,
@@ -17,8 +18,9 @@ export const BALANCE = Object.freeze({
   centerRectHeight: 92,
 
   maxHealth: 100,
-  maxTimer: 150,
+  maxTimer: 45,
   timerRateOutsideNode: 1,
+  nodeReentryLockMs: 3000,
   nodeHealthDrainPerSecond: 8.5,
   fieldHealthDrainPerSecond: 0.75,
   centerHealthRecoveryPerSecond: 5.5,

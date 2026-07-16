@@ -8,10 +8,11 @@ The HTML file is only the browser launcher and page structure. All gameplay, bot
 
 ### Main menu
 
-- Play instantly with bots
-- Host a multiplayer room
+- Play instantly with bots using 4–8 total runners
+- Host a 4–8 player human-only room
+- Host a mixed room with at least 2 humans and an exact bot count
 - Join using a five-character host code
-- Select 4–8 total runners
+- Mixed compositions must total 4–8 runners; bot count may be 0
 - Select Polygon, Football Pitch, or Circular arena
 - In-game help panel
 
@@ -22,6 +23,7 @@ The HTML file is only the browser launcher and page structure. All gameplay, bot
 - Occupied nodes physically reject other players
 - Capturing a different node restores health to 100
 - Re-entering the same node consecutively does not restore health
+- Leaving a node prevents only that player from re-entering it for 3 seconds
 - Timer pauses only while the player owns a node
 - Timer increases everywhere outside nodes, including the center zone
 - Staying inside a node drains health quickly to prevent camping
@@ -75,7 +77,7 @@ All values can be changed in `server/constants.js`.
 | Mechanic | Value |
 |---|---:|
 | Maximum health | 100 |
-| Maximum timer | 150 seconds |
+| Maximum timer | 45 seconds |
 | Player speed | 228 px/s |
 | Node health drain | 8.5 health/s |
 | Field health drain | 0.75 health/s |
@@ -126,7 +128,7 @@ npm run check
 3. In the first window, click **Host game**.
 4. Copy the generated room code.
 5. In the second window, click **Join game** and enter the code.
-6. The host can keep **Fill empty slots with bots** enabled and start immediately.
+6. In Human mode, connect all configured human runners. In Mix mode, connect the configured human slots; the exact bot count is added when the host starts.
 
 ## Play on the same Wi-Fi network
 

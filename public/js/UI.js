@@ -15,6 +15,9 @@ export class UI {
   constructor(actions) {
     this.actions = actions;
     this.playerCount = 6;
+    this.gameMode = 'bot';
+    this.mixedHumanCount = 2;
+    this.mixedBotCount = 2;
     this.arenaType = 'polygon';
     this.localId = null;
     this.currentRoom = null;
@@ -33,9 +36,21 @@ export class UI {
       playerCountValue: document.querySelector('#player-count-value'),
       countMinus: document.querySelector('#count-minus'),
       countPlus: document.querySelector('#count-plus'),
+      gameModeTabs: [...document.querySelectorAll('.mode-tab')],
+      standardCountSetting: document.querySelector('#standard-count-setting'),
+      mixedCountSettings: document.querySelector('#mixed-count-settings'),
+      humanCountMinus: document.querySelector('#human-count-minus'),
+      humanCountPlus: document.querySelector('#human-count-plus'),
+      humanCountValue: document.querySelector('#human-count-value'),
+      botCountMinus: document.querySelector('#bot-count-minus'),
+      botCountPlus: document.querySelector('#bot-count-plus'),
+      botCountValue: document.querySelector('#bot-count-value'),
+      mixedTotal: document.querySelector('#mixed-total'),
       arenaTabs: [...document.querySelectorAll('.arena-tab')],
       botsButton: document.querySelector('#bots-button'),
       hostButton: document.querySelector('#host-button'),
+      hostButtonTitle: document.querySelector('#host-button-title'),
+      hostButtonSubtitle: document.querySelector('#host-button-subtitle'),
       joinButton: document.querySelector('#join-button'),
       joinPanel: document.querySelector('#join-panel'),
       roomCodeInput: document.querySelector('#room-code-input'),
@@ -52,9 +67,12 @@ export class UI {
       lobbyPlayerList: document.querySelector('#lobby-player-list'),
       hostBadge: document.querySelector('#host-badge'),
       hostSettings: document.querySelector('#host-settings'),
+      lobbyGameMode: document.querySelector('#lobby-game-mode'),
       lobbyPlayerCount: document.querySelector('#lobby-player-count'),
+      lobbyBotCountSetting: document.querySelector('#lobby-bot-count-setting'),
+      lobbyBotCount: document.querySelector('#lobby-bot-count'),
       lobbyArena: document.querySelector('#lobby-arena'),
-      fillBotsToggle: document.querySelector('#fill-bots-toggle'),
+      lobbyCompositionNote: document.querySelector('#lobby-composition-note'),
       startGameButton: document.querySelector('#start-game-button'),
       lobbyWaitMessage: document.querySelector('#lobby-wait-message'),
       lobbyError: document.querySelector('#lobby-error'),
@@ -82,6 +100,26 @@ export class UI {
   bindEvents() {
     this.elements.countMinus.addEventListener('click', () => this.setPlayerCount(this.playerCount - 1));
     this.elements.countPlus.addEventListener('click', () => this.setPlayerCount(this.playerCount + 1));
+    this.elements.humanCountMinus.addEventListener(
+      'click',
+      () => this.setMixedComposition(this.mixedHumanCount - 1, this.mixedBotCount),
+    );
+    this.elements.humanCountPlus.addEventListener(
+      'click',
+      () => this.setMixedComposition(this.mixedHumanCount + 1, this.mixedBotCount),
+    );
+    this.elements.botCountMinus.addEventListener(
+      'click',
+      () => this.setMixedComposition(this.mixedHumanCount, this.mixedBotCount - 1),
+    );
+    this.elements.botCountPlus.addEventListener(
+      'click',
+      () => this.setMixedComposition(this.mixedHumanCount, this.mixedBotCount + 1),
+    );
+
+    for (const tab of this.elements.gameModeTabs) {
+      tab.addEventListener('click', () => this.setGameMode(tab.dataset.mode));
+    }
 
     for (const tab of this.elements.arenaTabs) {
       tab.addEventListener('click', () => this.setArenaType(tab.dataset.arena));
@@ -126,15 +164,12 @@ export class UI {
     });
 
     const updateSettings = () => {
-      this.actions.updateSettings({
-        maxPlayers: Number(this.elements.lobbyPlayerCount.value),
-        arenaType: this.elements.lobbyArena.value,
-        fillBots: this.elements.fillBotsToggle.checked,
-      });
+      this.actions.updateSettings(this.getLobbySettings());
     };
+    this.elements.lobbyGameMode.addEventListener('change', updateSettings);
     this.elements.lobbyPlayerCount.addEventListener('change', updateSettings);
+    this.elements.lobbyBotCount.addEventListener('change', updateSettings);
     this.elements.lobbyArena.addEventListener('change', updateSettings);
-    this.elements.fillBotsToggle.addEventListener('change', updateSettings);
     this.elements.startGameButton.addEventListener('click', () => this.actions.startGame());
     this.elements.restartButton.addEventListener('click', () => this.actions.startGame());
   }
@@ -150,6 +185,39 @@ export class UI {
     this.elements.playerCountValue.textContent = String(this.playerCount);
   }
 
+  setGameMode(value) {
+    this.gameMode = ['bot', 'human', 'mix'].includes(value) ? value : 'bot';
+    for (const tab of this.elements.gameModeTabs) {
+      tab.classList.toggle('active', tab.dataset.mode === this.gameMode);
+    }
+
+    const isBot = this.gameMode === 'bot';
+    const isMix = this.gameMode === 'mix';
+    this.elements.standardCountSetting.classList.toggle('hidden', isMix);
+    this.elements.mixedCountSettings.classList.toggle('hidden', !isMix);
+    this.elements.botsButton.classList.toggle('hidden', !isBot);
+    this.elements.hostButton.classList.toggle('hidden', isBot);
+    this.elements.hostButtonTitle.textContent = isMix ? 'Host mixed game' : 'Host human game';
+    this.elements.hostButtonSubtitle.textContent = isMix
+      ? 'Wait for humans, then add bots'
+      : 'Create a human-only room';
+  }
+
+  setMixedComposition(humanCount, botCount) {
+    let humans = clamp(humanCount, 2, 8);
+    let bots = clamp(botCount, 0, 8 - humans);
+    if (humans + bots < 4) {
+      if (humanCount !== this.mixedHumanCount) humans = Math.min(8 - bots, 4 - bots);
+      else bots = 4 - humans;
+    }
+
+    this.mixedHumanCount = humans;
+    this.mixedBotCount = bots;
+    this.elements.humanCountValue.textContent = String(humans);
+    this.elements.botCountValue.textContent = String(bots);
+    this.elements.mixedTotal.textContent = `${humans + bots} total runners`;
+  }
+
   setArenaType(value) {
     this.arenaType = ['polygon', 'football', 'circle'].includes(value) ? value : 'polygon';
     for (const tab of this.elements.arenaTabs) {
@@ -163,11 +231,45 @@ export class UI {
   }
 
   getSetup() {
-    return {
+    const setup = {
       name: this.getPlayerName(),
-      maxPlayers: this.playerCount,
       arenaType: this.arenaType,
-      fillBots: true,
+      gameMode: this.gameMode,
+    };
+    if (this.gameMode === 'mix') {
+      setup.humanPlayers = this.mixedHumanCount;
+      setup.botCount = this.mixedBotCount;
+      setup.maxPlayers = this.mixedHumanCount + this.mixedBotCount;
+    } else {
+      setup.maxPlayers = this.playerCount;
+      setup.humanPlayers = this.gameMode === 'human' ? this.playerCount : 1;
+      setup.botCount = this.gameMode === 'bot' ? this.playerCount - 1 : 0;
+    }
+    return setup;
+  }
+
+  getLobbySettings() {
+    const gameMode = this.elements.lobbyGameMode.value === 'mix' ? 'mix' : 'human';
+    let humanPlayers = Number(this.elements.lobbyPlayerCount.value);
+    let botCount = Number(this.elements.lobbyBotCount.value);
+
+    if (gameMode === 'human') {
+      humanPlayers = clamp(humanPlayers, 4, 8);
+      botCount = 0;
+    } else {
+      humanPlayers = clamp(humanPlayers, 2, 8);
+      botCount = clamp(botCount, 0, 8 - humanPlayers);
+      if (humanPlayers + botCount < 4) botCount = 4 - humanPlayers;
+    }
+
+    this.elements.lobbyPlayerCount.value = String(humanPlayers);
+    this.elements.lobbyBotCount.value = String(botCount);
+    return {
+      gameMode,
+      humanPlayers,
+      botCount,
+      maxPlayers: humanPlayers + botCount,
+      arenaType: this.elements.lobbyArena.value,
     };
   }
 
@@ -207,18 +309,27 @@ export class UI {
     this.localId = localId;
     const isHost = room.hostId === localId;
     const humanPlayers = room.players ?? [];
-    const emptySlots = Math.max(0, room.maxPlayers - humanPlayers.length);
+    const humanSlots = room.humanSlots ?? room.maxPlayers;
+    const botCount = room.botCount ?? 0;
+    const emptyHumanSlots = Math.max(0, humanSlots - humanPlayers.length);
 
     this.elements.copyCodeButton.textContent = room.code;
-    this.elements.lobbyStatusText.textContent = `${humanPlayers.length}/${room.maxPlayers} human runner${humanPlayers.length === 1 ? '' : 's'} connected`;
+    this.elements.lobbyStatusText.textContent = `${humanPlayers.length}/${humanSlots} human runner${humanSlots === 1 ? '' : 's'} connected · ${botCount} bot${botCount === 1 ? '' : 's'}`;
     this.elements.lobbyTitle.textContent = isHost ? 'Configure the match' : 'Waiting in the lobby';
     this.elements.hostBadge.classList.toggle('hidden', !isHost);
     this.elements.hostSettings.classList.toggle('hidden', !isHost);
     this.elements.lobbyWaitMessage.classList.toggle('hidden', isHost);
 
-    this.elements.lobbyPlayerCount.value = String(room.maxPlayers);
+    this.elements.lobbyGameMode.value = room.gameMode === 'mix' ? 'mix' : 'human';
+    this.elements.lobbyPlayerCount.value = String(humanSlots);
+    this.elements.lobbyBotCount.value = String(botCount);
     this.elements.lobbyArena.value = room.arenaType;
-    this.elements.fillBotsToggle.checked = room.fillBots;
+    const isMixed = room.gameMode === 'mix';
+    this.elements.lobbyBotCountSetting.classList.toggle('hidden', !isMixed);
+    this.elements.lobbyCompositionNote.textContent = isMixed
+      ? `${humanSlots} human + ${botCount} bot = ${room.maxPlayers} total runners`
+      : `${humanSlots} human runners · no bots`;
+    this.elements.startGameButton.disabled = false;
 
     const cards = humanPlayers.map((player) => `
       <div class="lobby-player">
@@ -228,12 +339,21 @@ export class UI {
       </div>
     `);
 
-    for (let index = 0; index < emptySlots; index += 1) {
+    for (let index = 0; index < emptyHumanSlots; index += 1) {
       cards.push(`
         <div class="lobby-player empty-slot">
           <span class="player-color-dot" style="color:#51647b;background:#51647b"></span>
-          <strong>${room.fillBots ? 'Bot will fill this slot' : 'Waiting for player'}</strong>
-          <small>${room.fillBots ? 'BOT' : 'OPEN'}</small>
+          <strong>Waiting for human player</strong>
+          <small>OPEN</small>
+        </div>
+      `);
+    }
+    for (let index = 0; index < botCount; index += 1) {
+      cards.push(`
+        <div class="lobby-player empty-slot bot-slot">
+          <span class="player-color-dot" style="color:#76f6a3;background:#76f6a3"></span>
+          <strong>Bot joins when the match starts</strong>
+          <small>BOT</small>
         </div>
       `);
     }
@@ -353,6 +473,7 @@ export class UI {
   resetToMenu() {
     this.currentRoom = null;
     this.eventItems = [];
+    this.setBusy(false);
     this.showMenuError('');
     this.showLobbyError('');
     this.elements.joinPanel.classList.add('hidden');
