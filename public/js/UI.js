@@ -11,6 +11,15 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function formatPlayingTime(seconds) {
+  const totalSeconds = Math.max(0, Math.round(Number(seconds) || 0));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return minutes > 0
+    ? `${minutes}:${String(remainingSeconds).padStart(2, '0')}`
+    : `${remainingSeconds}s`;
+}
+
 export class UI {
   constructor(actions) {
     this.actions = actions;
@@ -89,6 +98,7 @@ export class UI {
       gameoverOverlay: document.querySelector('#gameover-overlay'),
       winnerTitle: document.querySelector('#winner-title'),
       winnerSubtitle: document.querySelector('#winner-subtitle'),
+      finalStats: document.querySelector('#final-stats'),
       restartButton: document.querySelector('#restart-button'),
       restartWait: document.querySelector('#restart-wait'),
       toast: document.querySelector('#toast'),
@@ -419,6 +429,32 @@ export class UI {
     this.elements.winnerSubtitle.textContent = isLocalWinner
       ? 'You controlled the circuit and became the last runner standing.'
       : 'The arena belongs to the last surviving runner.';
+
+    const finalPlayers = [...snapshot.players].sort((a, b) => {
+      if (a.id === snapshot.winnerId) return -1;
+      if (b.id === snapshot.winnerId) return 1;
+      return b.playingTime - a.playingTime;
+    });
+    this.elements.finalStats.innerHTML = `
+      <div class="final-stat-row final-stat-header">
+        <span>Runner</span>
+        <span>Distance</span>
+        <span>Playing time</span>
+        <span>Efficiency</span>
+      </div>
+      ${finalPlayers.map((player) => `
+        <div class="final-stat-row ${player.id === snapshot.winnerId ? 'winner-row' : ''}">
+          <span class="final-player-name">
+            <i style="color:${player.color};background:${player.color}"></i>
+            <strong>${escapeHtml(player.name)}</strong>
+            ${player.isBot ? '<small>BOT</small>' : ''}
+          </span>
+          <span>${Math.round(player.distanceCovered || 0)} px</span>
+          <span>${formatPlayingTime(player.playingTime)}</span>
+          <span>${Number(player.efficiency || 0).toFixed(1)}%</span>
+        </div>
+      `).join('')}
+    `;
 
     const isHost = snapshot.hostId === this.localId;
     this.elements.restartButton.classList.toggle('hidden', !isHost);

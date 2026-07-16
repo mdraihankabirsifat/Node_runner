@@ -45,6 +45,13 @@ function callbackSafe(callback, result) {
   if (typeof callback === 'function') callback(result);
 }
 
+function scheduleMixedAutoStart(room) {
+  if (!room?.isMixedReadyToStart()) return;
+  setImmediate(() => {
+    if (room.isMixedReadyToStart()) room.start(room.hostId);
+  });
+}
+
 io.on('connection', (socket) => {
   socket.on('room:create', (payload = {}, callback) => {
     try {
@@ -91,6 +98,7 @@ io.on('connection', (socket) => {
       code,
       room: result.ok ? room.serializeLobby() : undefined,
     });
+    if (result.ok) scheduleMixedAutoStart(room);
   });
 
   socket.on('room:updateSettings', (payload = {}, callback) => {
@@ -99,7 +107,9 @@ io.on('connection', (socket) => {
       callbackSafe(callback, { ok: false, error: 'You are not in a room.' });
       return;
     }
-    callbackSafe(callback, room.updateSettings(socket.id, payload));
+    const result = room.updateSettings(socket.id, payload);
+    callbackSafe(callback, result);
+    if (result.ok) scheduleMixedAutoStart(room);
   });
 
   socket.on('room:start', (_payload, callback) => {

@@ -44,6 +44,7 @@ Every runner has visible stats:
 - Zone state: NODE, CENTER, or FIELD
 - Complete status cards in the right sidebar
 - Event feed for node captures, eliminations, shrinking, and victory
+- Final all-player results for distance covered, active playing time, and survival efficiency
 
 ### Bots
 
@@ -77,7 +78,8 @@ All values can be changed in `server/constants.js`.
 | Mechanic | Value |
 |---|---:|
 | Maximum health | 100 |
-| Maximum timer | 45 seconds |
+| Initial round timer | 30 seconds |
+| Timer after each shrink | Previous limit minus 5 seconds (minimum 5) |
 | Player speed | 228 px/s |
 | Node health drain | 8.5 health/s |
 | Field health drain | 0.75 health/s |

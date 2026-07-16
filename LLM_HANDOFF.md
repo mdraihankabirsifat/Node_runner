@@ -167,7 +167,8 @@ Socket events:
 
 ## Current balance assumptions
 
-- Maximum timer: 45 seconds.
+- Initial round timer limit: 30 seconds.
+- After each arena shrink, surviving players' timers reset to 0 and the next limit is 5 seconds shorter, with a 5-second minimum.
 - Timer does not reset when a node is captured; it only pauses.
 - A new node resets health, not timer.
 - Health drains inside nodes to prevent camping.

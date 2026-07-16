@@ -119,6 +119,8 @@ export class GameRoom {
     this.snapshotAccumulator = 0;
     this.eventCounter = 0;
     this.lastElimination = null;
+    this.roundTimerLimit = BALANCE.maxTimer;
+    this.matchActiveTime = 0;
 
     this.addHuman(hostSocket, settings.name || 'Host');
   }
@@ -142,6 +144,8 @@ export class GameRoom {
       radius: BALANCE.playerRadius,
       health: BALANCE.maxHealth,
       timer: 0,
+      distanceCovered: 0,
+      playingTime: 0,
       alive: true,
       occupiedNodeId: null,
       lastNodeId: null,
@@ -247,6 +251,18 @@ export class GameRoom {
     }
   }
 
+  humanCount() {
+    return [...this.players.values()].filter((player) => !player.isBot).length;
+  }
+
+  isMixedReadyToStart() {
+    return (
+      this.status === 'lobby'
+      && this.gameMode === 'mix'
+      && this.humanCount() >= this.humanSlots
+    );
+  }
+
   start(socketId) {
     if (socketId !== this.hostId) {
       return { ok: false, error: 'Only the host can start the match.' };
@@ -255,7 +271,7 @@ export class GameRoom {
       return { ok: false, error: 'The match is already running.' };
     }
 
-    const humanCount = [...this.players.values()].filter((player) => !player.isBot).length;
+    const humanCount = this.humanCount();
     if (humanCount < this.humanSlots) {
       return {
         ok: false,
@@ -270,11 +286,15 @@ export class GameRoom {
 
   resetMatch() {
     this.round = 1;
+    this.roundTimerLimit = BALANCE.maxTimer;
+    this.matchActiveTime = 0;
     this.winnerId = null;
     this.lastElimination = null;
     for (const player of this.players.values()) {
       player.health = BALANCE.maxHealth;
       player.timer = 0;
+      player.distanceCovered = 0;
+      player.playingTime = 0;
       player.alive = true;
       player.occupiedNodeId = null;
       player.lastNodeId = null;
@@ -347,14 +367,14 @@ export class GameRoom {
       ? { x: center.x, y: center.y }
       : { x: center.x + center.width / 2, y: center.y + center.height / 2 };
 
-    if (bot.occupiedNodeId && bot.health > 39 && bot.timer < BALANCE.maxTimer - 8) {
+    if (bot.occupiedNodeId && bot.health > 39 && bot.timer < this.roundTimerLimit - 4) {
       bot.botMode = 'HOLD_NODE';
       bot.botTarget = null;
       bot.botDecisionAt = now + 220;
       return;
     }
 
-    if (!bot.occupiedNodeId && bot.health < 43 && bot.timer < BALANCE.maxTimer * 0.84) {
+    if (!bot.occupiedNodeId && bot.health < 43 && bot.timer < this.roundTimerLimit * 0.84) {
       bot.botMode = 'RECOVER_CENTER';
       bot.botTarget = centerTarget;
       bot.botDecisionAt = now + 360;
@@ -426,18 +446,57 @@ export class GameRoom {
         continue;
       }
 
+      const targetMagnitude = Math.max(distance, 1);
+      let steerX = dx / targetMagnitude;
+      let steerY = dy / targetMagnitude;
+
+      for (const other of this.players.values()) {
+        if (!other.alive || other.id === bot.id) continue;
+        let awayX = bot.x - other.x;
+        let awayY = bot.y - other.y;
+        let separation = Math.hypot(awayX, awayY);
+        if (separation >= 90) continue;
+
+        if (separation < 0.001) {
+          awayX = bot.id < other.id ? -1 : 1;
+          awayY = 0;
+          separation = 1;
+        }
+
+        const normalizedX = awayX / separation;
+        const normalizedY = awayY / separation;
+        const repulsion = ((90 - separation) / 90) * 1.55;
+        steerX += normalizedX * repulsion;
+        steerY += normalizedY * repulsion;
+
+        if (separation < 52) {
+          const sidestep = ((52 - separation) / 52) * 1.1;
+          steerX += -normalizedY * sidestep;
+          steerY += normalizedX * sidestep;
+        }
+      }
+
       bot.input = {
-        up: dy < -5,
-        down: dy > 5,
-        left: dx < -5,
-        right: dx > 5,
+        up: steerY < -0.18,
+        down: steerY > 0.18,
+        left: steerX < -0.18,
+        right: steerX > 0.18,
       };
+    }
+  }
+
+  updatePlayingStats(dt) {
+    this.matchActiveTime += dt;
+    for (const player of this.players.values()) {
+      if (player.alive) player.playingTime += dt;
     }
   }
 
   movePlayers(dt) {
     for (const player of this.players.values()) {
       if (!player.alive) continue;
+      const previousX = player.x;
+      const previousY = player.y;
       const direction = normalizeInput(player.input);
       const speed = BALANCE.playerSpeed * (player.isBot ? BALANCE.botSpeedMultiplier : 1);
       player.vx = direction.x * speed;
@@ -445,6 +504,10 @@ export class GameRoom {
       player.x += player.vx * dt;
       player.y += player.vy * dt;
       clampPlayerToArena(player, this.arena);
+      player.distanceCovered += Math.hypot(
+        player.x - previousX,
+        player.y - previousY,
+      );
     }
   }
 
@@ -602,7 +665,7 @@ export class GameRoom {
         player.health -= BALANCE.nodeHealthDrainPerSecond * dt;
       } else {
         player.timer += BALANCE.timerRateOutsideNode * dt;
-        const timerFraction = clamp(player.timer / BALANCE.maxTimer, 0, 1);
+        const timerFraction = clamp(player.timer / this.roundTimerLimit, 0, 1);
         const pressureStart = BALANCE.criticalTimerFraction;
         const pressure = clamp(
           (timerFraction - pressureStart) / (1 - pressureStart),
@@ -621,7 +684,7 @@ export class GameRoom {
       }
 
       player.health = clamp(player.health, 0, BALANCE.maxHealth);
-      player.timer = clamp(player.timer, 0, BALANCE.maxTimer);
+      player.timer = clamp(player.timer, 0, this.roundTimerLimit);
     }
   }
 
@@ -630,7 +693,7 @@ export class GameRoom {
     for (const player of this.players.values()) {
       if (!player.alive) continue;
       if (player.health <= 0) eliminated.push({ player, cause: 'Health depleted' });
-      else if (player.timer >= BALANCE.maxTimer) eliminated.push({ player, cause: 'Timer overloaded' });
+      else if (player.timer >= this.roundTimerLimit) eliminated.push({ player, cause: 'Timer overloaded' });
     }
 
     for (const item of eliminated) {
@@ -682,13 +745,21 @@ export class GameRoom {
     for (const player of alivePlayers) {
       player.occupiedNodeId = null;
       player.nodeReentryLocks.clear();
+      player.timer = 0;
       player.zone = 'field';
       player.vx = 0;
       player.vy = 0;
     }
     this.round += 1;
+    this.roundTimerLimit = Math.max(
+      BALANCE.minimumRoundTimer,
+      this.roundTimerLimit - BALANCE.roundTimerReduction,
+    );
     this.arena = buildArena(this.arenaType, alivePlayers.length, this.maxPlayers);
-    this.emitGameEvent('ARENA_SHRINK', `Arena shrinking: ${alivePlayers.length} runners remain.`);
+    this.emitGameEvent(
+      'ARENA_SHRINK',
+      `Arena shrinking: ${alivePlayers.length} runners remain. Timer reset to ${this.roundTimerLimit}s.`,
+    );
     this.broadcastSnapshot(true);
   }
 
@@ -707,6 +778,7 @@ export class GameRoom {
     } else if (this.status === 'transition') {
       if (this.stateEndsAt && now >= this.stateEndsAt) this.finishTransition();
     } else if (this.status === 'playing') {
+      this.updatePlayingStats(dt);
       this.updateBots(now);
       this.movePlayers(dt);
       this.resolvePlayerCollisions();
@@ -774,6 +846,13 @@ export class GameRoom {
       radius: player.radius,
       health: Number(player.health.toFixed(2)),
       timer: Number(player.timer.toFixed(2)),
+      distanceCovered: Number(player.distanceCovered.toFixed(2)),
+      playingTime: Number(player.playingTime.toFixed(2)),
+      efficiency: Number(
+        (this.matchActiveTime > 0
+          ? (player.playingTime / this.matchActiveTime) * 100
+          : 0).toFixed(1),
+      ),
       alive: player.alive,
       occupiedNodeId: player.occupiedNodeId,
       lastNodeId: player.lastNodeId,
@@ -797,7 +876,8 @@ export class GameRoom {
       stateEndsAt: this.stateEndsAt,
       winnerId: this.winnerId,
       maxHealth: BALANCE.maxHealth,
-      maxTimer: BALANCE.maxTimer,
+      maxTimer: this.roundTimerLimit,
+      matchActiveTime: Number(this.matchActiveTime.toFixed(2)),
       nodeReentryLockMs: BALANCE.nodeReentryLockMs,
       world: WORLD,
       arena: this.arena,

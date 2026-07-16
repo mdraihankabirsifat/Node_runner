@@ -18,7 +18,9 @@ export const BALANCE = Object.freeze({
   centerRectHeight: 92,
 
   maxHealth: 100,
-  maxTimer: 45,
+  maxTimer: 30,
+  minimumRoundTimer: 5,
+  roundTimerReduction: 5,
   timerRateOutsideNode: 1,
   nodeReentryLockMs: 3000,
   nodeHealthDrainPerSecond: 8.5,

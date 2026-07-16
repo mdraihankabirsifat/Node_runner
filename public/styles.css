@@ -794,23 +794,103 @@ select:focus-visible {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 18px;
   background: rgba(3, 8, 16, 0.75);
   backdrop-filter: blur(8px);
 }
 
 .gameover-overlay h2 {
-  margin: 10px 0 8px;
-  font-size: clamp(42px, 7vw, 82px);
+  margin: 6px 0 4px;
+  font-size: clamp(32px, 5vw, 58px);
   letter-spacing: -0.055em;
 }
 
 .gameover-overlay > p:not(.small-label) {
+  margin: 4px 0 8px;
   color: #aebed0;
 }
 
+.final-stats {
+  width: min(760px, 96%);
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(4, 12, 24, 0.78);
+}
+
+.final-stat-row {
+  min-height: 31px;
+  padding: 5px 10px;
+  display: grid;
+  grid-template-columns: minmax(140px, 1.5fr) repeat(3, minmax(82px, 1fr));
+  align-items: center;
+  gap: 8px;
+  color: #c4d2e2;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  text-align: center;
+}
+
+.final-stat-row:first-child {
+  border-top: 0;
+}
+
+.final-stat-header {
+  min-height: 27px;
+  color: #7f95ae;
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.final-stat-row > span:first-child {
+  text-align: left;
+}
+
+.final-player-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.final-player-name i {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.final-player-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.final-player-name small {
+  padding: 2px 4px;
+  border-radius: 999px;
+  color: #9eb1c7;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 7px;
+  font-style: normal;
+}
+
+.winner-row {
+  color: #efffff;
+  background: rgba(118, 246, 163, 0.09);
+}
+
+.efficiency-note {
+  font-size: 9px;
+  text-align: center;
+}
+
 .gameover-overlay .primary-button {
-  margin-top: 18px;
+  margin-top: 8px;
   min-width: 160px;
 }
 

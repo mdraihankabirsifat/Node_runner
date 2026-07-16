@@ -71,8 +71,8 @@ test('with three players, the lower polygon node stays on the triangle base', ()
   );
 });
 
-test('the exposure timer limit is 45 seconds', () => {
-  assert.equal(BALANCE.maxTimer, 45);
+test('the initial exposure timer limit is 30 seconds', () => {
+  assert.equal(BALANCE.maxTimer, 30);
 });
 
 test('a node accepts only one player and blocks another runner', () => {
@@ -189,6 +189,62 @@ test('timer overload eliminates a runner and shrinks the arena', () => {
   assert.equal(room.arena.nodes.length, aliveCount - 1);
 });
 
+test('shrinking resets survivor timers and lowers the next limit by five seconds', () => {
+  const { room } = createRoom(4);
+  const eliminated = room.players.get('host');
+  for (const player of room.players.values()) player.timer = 18;
+  eliminated.health = 0;
+
+  room.evaluateEliminations();
+
+  assert.equal(room.status, 'transition');
+  assert.equal(room.round, 2);
+  assert.equal(room.roundTimerLimit, 25);
+  for (const player of room.players.values()) {
+    if (player.alive) assert.equal(player.timer, 0);
+  }
+  assert.equal(room.snapshot().maxTimer, 25);
+});
+
+test('distance, playing time, and efficiency are serialized for every player', () => {
+  const { room } = createRoom(4);
+  const player = room.players.get('host');
+  player.input = { up: false, down: false, left: false, right: true };
+
+  room.updatePlayingStats(1);
+  room.movePlayers(1);
+  const serialized = room.serializePlayer(player);
+
+  assert.equal(serialized.playingTime, 1);
+  assert.ok(serialized.distanceCovered > 0);
+  assert.equal(serialized.efficiency, 100);
+});
+
+test('nearby bots choose opposite sidesteps instead of pushing head-on', () => {
+  const { room } = createRoom(4);
+  const bots = [...room.players.values()].filter((player) => player.isBot);
+  const [leftBot, rightBot] = bots;
+
+  for (const player of room.players.values()) {
+    player.x = 100;
+    player.y = 100;
+  }
+  leftBot.x = 600;
+  leftBot.y = 360;
+  rightBot.x = 632;
+  rightBot.y = 360;
+  for (const bot of [leftBot, rightBot]) {
+    bot.botTarget = { x: 640, y: 360, nodeId: 'test-node' };
+    bot.botMode = 'SEEK_NODE';
+    bot.botDecisionAt = 2000;
+  }
+
+  room.updateBots(1000);
+
+  assert.equal(leftBot.input.up, true);
+  assert.equal(rightBot.input.down, true);
+});
+
 test('mixed mode waits for its human slots and then adds the exact bot count', () => {
   const io = makeFakeIo();
   const host = makeSocket('host');
@@ -213,6 +269,7 @@ test('mixed mode waits for its human slots and then adds the exact bot count', (
   const guest = makeSocket('guest');
   assert.equal(room.addHuman(guest, 'Guest').ok, true);
   assert.equal(room.serializeLobby().players.length, 2);
+  assert.equal(room.isMixedReadyToStart(), true);
   assert.equal(room.start(host.id).ok, true);
   assert.equal([...room.players.values()].filter((player) => player.isBot).length, 2);
   assert.equal(room.players.size, 4);

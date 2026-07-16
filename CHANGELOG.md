@@ -1,5 +1,22 @@
 # Node Runner Changelog
 
+## 1.2.0 — Results, timer rounds, and bot movement
+
+### Gameplay
+
+- The initial exposure limit is now 30 seconds.
+- Each arena shrink resets survivor timers to 0.
+- Each new round has 5 seconds less exposure time than the previous round, with a 5-second minimum.
+- Entering an owned node pauses the timer.
+- Capturing a different node restores health to 100.
+- Bots use separation and opposite sidestepping to reduce head-on clogging.
+
+### Match results
+
+- The game-over screen shows every runner in one frame.
+- Results include distance covered, active playing time, and survival efficiency.
+- Survival efficiency is the percentage of total active match time that the runner survived.
+
 ## 1.1.0 — Four-change update
 
 ### Gameplay
