@@ -6,7 +6,7 @@ export const WORLD = Object.freeze({
 });
 
 export const BALANCE = Object.freeze({
-  minPlayers: 4,
+  minPlayers: 3,
   minMixedHumans: 2,
   maxPlayers: 8,
   playerRadius: 16,

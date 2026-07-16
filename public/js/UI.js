@@ -26,7 +26,7 @@ export class UI {
     this.playerCount = 6;
     this.gameMode = 'bot';
     this.mixedHumanCount = 2;
-    this.mixedBotCount = 2;
+    this.mixedBotCount = 1;
     this.arenaType = 'polygon';
     this.localId = null;
     this.currentRoom = null;
@@ -191,7 +191,7 @@ export class UI {
   }
 
   setPlayerCount(value) {
-    this.playerCount = clamp(value, 4, 8);
+    this.playerCount = clamp(value, 3, 8);
     this.elements.playerCountValue.textContent = String(this.playerCount);
   }
 
@@ -216,9 +216,9 @@ export class UI {
   setMixedComposition(humanCount, botCount) {
     let humans = clamp(humanCount, 2, 8);
     let bots = clamp(botCount, 0, 8 - humans);
-    if (humans + bots < 4) {
-      if (humanCount !== this.mixedHumanCount) humans = Math.min(8 - bots, 4 - bots);
-      else bots = 4 - humans;
+    if (humans + bots < 3) {
+      if (humanCount !== this.mixedHumanCount) humans = Math.min(8 - bots, 3 - bots);
+      else bots = 3 - humans;
     }
 
     this.mixedHumanCount = humans;
@@ -264,12 +264,12 @@ export class UI {
     let botCount = Number(this.elements.lobbyBotCount.value);
 
     if (gameMode === 'human') {
-      humanPlayers = clamp(humanPlayers, 4, 8);
+      humanPlayers = clamp(humanPlayers, 3, 8);
       botCount = 0;
     } else {
       humanPlayers = clamp(humanPlayers, 2, 8);
       botCount = clamp(botCount, 0, 8 - humanPlayers);
-      if (humanPlayers + botCount < 4) botCount = 4 - humanPlayers;
+      if (humanPlayers + botCount < 3) botCount = 3 - humanPlayers;
     }
 
     this.elements.lobbyPlayerCount.value = String(humanPlayers);

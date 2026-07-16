@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#08101f" />
     <title>Node Runner</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260716-4" />
   </head>
   <body>
     <div id="app">
@@ -85,12 +85,12 @@
                   <label class="field-label">Bots</label>
                   <div class="stepper">
                     <button id="bot-count-minus" type="button">-</button>
-                    <strong id="bot-count-value">2</strong>
+                    <strong id="bot-count-value">1</strong>
                     <button id="bot-count-plus" type="button">+</button>
                   </div>
                 </div>
               </div>
-              <p id="mixed-total" class="composition-note">4 total runners</p>
+              <p id="mixed-total" class="composition-note">3 total runners</p>
             </div>
 
             <button id="bots-button" class="primary-button large-button">
@@ -171,8 +171,8 @@
                   <span class="field-label">Bots</span>
                   <select id="lobby-bot-count" class="select-input">
                     <option value="0">0</option>
-                    <option value="1">1</option>
-                    <option value="2" selected>2</option>
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
                     <option value="3">3</option>
                     <option value="4">4</option>
                     <option value="5">5</option>
@@ -273,6 +273,6 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="/js/main.js"></script>
+    <script type="module" src="/js/main.js?v=20260716-4"></script>
   </body>
 </html>

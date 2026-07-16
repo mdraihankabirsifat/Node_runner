@@ -1,6 +1,6 @@
-import { InputController } from './InputController.js';
-import { Renderer } from './Renderer.js';
-import { UI } from './UI.js';
+import { InputController } from './InputController.js?v=20260716-4';
+import { Renderer } from './Renderer.js?v=20260716-4';
+import { UI } from './UI.js?v=20260716-4';
 
 export class GameClient {
   constructor() {

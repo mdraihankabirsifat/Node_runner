@@ -284,7 +284,7 @@ test('mixed mode waits for its human slots and then adds the exact bot count', (
   assert.equal(room.players.size, 4);
 });
 
-test('human mode keeps a minimum of four humans and never adds bots', () => {
+test('human mode keeps a minimum of three humans and never adds bots', () => {
   const io = makeFakeIo();
   const host = makeSocket('host');
   const room = new GameRoom(
@@ -299,11 +299,30 @@ test('human mode keeps a minimum of four humans and never adds bots', () => {
     host,
   );
 
-  assert.equal(room.humanSlots, 4);
+  assert.equal(room.humanSlots, 3);
   assert.equal(room.botCount, 0);
-  for (const id of ['guest-1', 'guest-2', 'guest-3']) {
+  for (const id of ['guest-1', 'guest-2']) {
     assert.equal(room.addHuman(makeSocket(id), id).ok, true);
   }
   assert.equal(room.start(host.id).ok, true);
   assert.equal([...room.players.values()].some((player) => player.isBot), false);
+});
+
+test('mixed mode enforces a minimum combined total of three runners', () => {
+  const room = new GameRoom(
+    makeFakeIo(),
+    'MIN3',
+    {
+      name: 'Host',
+      gameMode: 'mix',
+      humanPlayers: 2,
+      botCount: 0,
+      arenaType: 'polygon',
+    },
+    makeSocket('host'),
+  );
+
+  assert.equal(room.humanSlots, 2);
+  assert.equal(room.botCount, 1);
+  assert.equal(room.maxPlayers, 3);
 });

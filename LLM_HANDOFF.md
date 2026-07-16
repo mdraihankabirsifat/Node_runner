@@ -12,9 +12,9 @@ Build a fast top-down 2D competitive survival game in JavaScript. The game combi
 
 - If there are `P` alive players, there are `P - 1` active nodes.
 - Therefore, at least one runner cannot occupy a node.
-- Total match size is configurable from 4 to 8.
-- Human-only and bot matches use a minimum of 4 total runners.
-- Mixed matches require at least 2 human slots; bots may be 0 or more, and the combined total must be 4 to 8.
+- Total match size is configurable from 3 to 8.
+- Human-only and bot matches use a minimum of 3 total runners.
+- Mixed matches require at least 2 human slots; bots may be 0 or more, and the combined total must be 3 to 8.
 - With three runners remaining, polygon mode uses a square with two nodes on opposite corners.
 - With two runners remaining, polygon mode uses a triangle with one active node.
 
@@ -87,9 +87,9 @@ Current implementation:
 
 ### Play modes
 
-1. Bot: one local human plus bots, with 4 to 8 total runners
-2. Human: 4 to 8 human runners
-3. Mix: at least 2 humans plus an exact bot count, with 4 to 8 total runners
+1. Bot: one local human plus bots, with 3 to 8 total runners
+2. Human: 3 to 8 human runners
+3. Mix: at least 2 humans plus an exact bot count, with 3 to 8 total runners
 4. Join a Human or Mix room with a five-character room code
 
 The host chooses:

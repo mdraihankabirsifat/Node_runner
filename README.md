@@ -8,11 +8,11 @@ The HTML file is only the browser launcher and page structure. All gameplay, bot
 
 ### Main menu
 
-- Play instantly with bots using 4–8 total runners
-- Host a 4–8 player human-only room
+- Play instantly with bots using 3–8 total runners
+- Host a 3–8 player human-only room
 - Host a mixed room with at least 2 humans and an exact bot count
 - Join using a five-character host code
-- Mixed compositions must total 4–8 runners; bot count may be 0
+- Mixed compositions must total 3–8 runners; bot count may be 0
 - Select Polygon, Football Pitch, or Circular arena
 - In-game help panel
 
