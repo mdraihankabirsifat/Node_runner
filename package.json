@@ -1,0 +1,10 @@
+{
+  "name": "node-runner",
+  "version": "0.2.0",
+  "private": true,
+  "description": "A dependency-free HTML5 Canvas survival game prototype.",
+  "scripts": {
+    "start": "npx serve .",
+    "check": "node --check js/main.js && node --check js/systems/Game.js && node --check js/systems/BotAI.js && node --check js/systems/Arena.js"
+  }
+}

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Node Runner — a fast 2D survival game about rotating between unstable safe nodes." />
+  <title>Node Runner</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Node Runner home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>NODE <strong>RUNNER</strong></span>
+      </a>
+      <div class="topbar-actions">
+        <button class="icon-button" id="howToButton" type="button" aria-label="How to play">?</button>
+        <button class="icon-button" id="soundButton" type="button" aria-label="Toggle sound">♫</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="menuScreen" class="screen menu-screen is-active" aria-labelledby="gameTitle">
+        <div class="ambient-grid" aria-hidden="true"></div>
+        <div class="orb orb-one" aria-hidden="true"></div>
+        <div class="orb orb-two" aria-hidden="true"></div>
+
+        <div class="menu-layout">
+          <div class="hero-copy">
+            <span class="eyebrow">IUT GAME JAM • KICKOFF</span>
+            <h1 id="gameTitle">ONE NODE<br /><span>SHORT.</span></h1>
+            <p>
+              Every corner is temporary. Your pulse is falling. Rotate, recover,
+              and steal the opening before the arena closes in.
+            </p>
+            <div class="mechanic-strip" aria-label="Core game mechanics">
+              <div><span class="dot dot-node"></span><b>Claim</b><small>Reset heart</small></div>
+              <div><span class="dot dot-pulse"></span><b>Rotate</b><small>Nodes drain</small></div>
+              <div><span class="dot dot-center"></span><b>Recover</b><small>Timer rises</small></div>
+            </div>
+          </div>
+
+          <section class="setup-card" aria-label="Match setup">
+            <div class="card-heading">
+              <div>
+                <span class="section-kicker">QUICK MATCH</span>
+                <h2>Configure Run</h2>
+              </div>
+              <span class="status-pill"><i></i> Local prototype</span>
+            </div>
+
+            <div class="control-group">
+              <div class="label-row">
+                <label>Players</label>
+                <span id="nodeCountLabel">3 nodes + 1 runner</span>
+              </div>
+              <div class="stepper">
+                <button id="decreasePlayers" type="button" aria-label="Decrease player count">−</button>
+                <output id="playerCountOutput">4</output>
+                <button id="increasePlayers" type="button" aria-label="Increase player count">+</button>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <div class="label-row">
+                <label>Arena</label>
+                <span>Choose the geometry</span>
+              </div>
+              <div class="arena-options" role="radiogroup" aria-label="Arena type">
+                <button class="arena-option is-selected" data-arena="polygon" type="button" role="radio" aria-checked="true">
+                  <span class="arena-icon polygon-icon"></span>
+                  <b>Polygon</b><small>Dynamic sides</small>
+                </button>
+                <button class="arena-option" data-arena="football" type="button" role="radio" aria-checked="false">
+                  <span class="arena-icon football-icon"></span>
+                  <b>Pitch</b><small>Rectangular</small>
+                </button>
+                <button class="arena-option" data-arena="circle" type="button" role="radio" aria-checked="false">
+                  <span class="arena-icon circle-icon"></span>
+                  <b>Orbit</b><small>Circular</small>
+                </button>
+              </div>
+            </div>
+
+            <div class="mode-grid">
+              <button class="mode-card is-selected" type="button">
+                <span>BOT</span><b>Play with bots</b><small>Available now</small>
+              </button>
+              <button class="mode-card is-locked" type="button" data-coming-soon="Host mode needs a server-authoritative networking layer.">
+                <span>HOST</span><b>Host a game</b><small>Phase 2</small>
+              </button>
+              <button class="mode-card is-locked" type="button" data-coming-soon="Join codes will be enabled with online multiplayer.">
+                <span>JOIN</span><b>Enter a code</b><small>Phase 2</small>
+              </button>
+            </div>
+
+            <button class="primary-button" id="startGameButton" type="button">
+              <span>START RUN</span><kbd>SPACE</kbd>
+            </button>
+            <p class="keyboard-hint">Move with <kbd>WASD</kbd> or <kbd>ARROWS</kbd> • Pause with <kbd>P</kbd></p>
+          </section>
+        </div>
+      </section>
+
+      <section id="gameScreen" class="screen game-screen" aria-label="Game">
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="game-hud">
+          <div class="hud-left">
+            <button id="backToMenuButton" class="hud-button" type="button">← MENU</button>
+            <span id="arenaLabel" class="hud-chip">POLYGON</span>
+          </div>
+          <div class="hud-center">
+            <span id="phaseLabel">READY</span>
+            <strong id="aliveLabel">4 ALIVE</strong>
+          </div>
+          <div class="hud-right">
+            <button id="pauseButton" class="hud-button" type="button">Ⅱ PAUSE</button>
+          </div>
+        </div>
+
+        <aside class="player-status" aria-label="Your status">
+          <div class="status-title-row">
+            <div><span class="player-color-dot"></span><b>YOU</b></div>
+            <span id="zoneLabel">CENTER</span>
+          </div>
+          <div class="meter-label"><span>HEART</span><strong id="heartValue">100</strong></div>
+          <div class="meter"><div id="heartBar" class="meter-fill heart-fill"></div></div>
+          <div class="meter-label"><span>EXPOSURE</span><strong id="exposureValue">0.0s</strong></div>
+          <div class="meter exposure-meter"><div id="exposureBar" class="meter-fill exposure-fill"></div></div>
+          <p id="statusHint">Move to a different node to restore your heart.</p>
+        </aside>
+
+        <div id="eventFeed" class="event-feed" aria-live="polite"></div>
+        <div id="countdownOverlay" class="countdown-overlay" aria-live="assertive"></div>
+
+        <div id="pauseOverlay" class="overlay-card-wrap" hidden>
+          <section class="overlay-card">
+            <span class="section-kicker">RUN PAUSED</span>
+            <h2>Catch your breath.</h2>
+            <button id="resumeButton" class="primary-button" type="button">RESUME</button>
+            <button id="quitButton" class="secondary-button" type="button">QUIT TO MENU</button>
+          </section>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay-card-wrap" hidden>
+          <section class="overlay-card game-over-card">
+            <span class="section-kicker">MATCH COMPLETE</span>
+            <h2 id="gameOverTitle">VICTORY</h2>
+            <p id="gameOverText">You conquered the last node.</p>
+            <div id="scoreSummary" class="score-summary"></div>
+            <button id="playAgainButton" class="primary-button" type="button">RUN AGAIN</button>
+            <button id="gameOverMenuButton" class="secondary-button" type="button">MAIN MENU</button>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div id="modalBackdrop" class="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <button id="closeModalButton" class="modal-close" type="button" aria-label="Close">×</button>
+        <span class="section-kicker">CORE RULES</span>
+        <h2 id="modalTitle">How to survive</h2>
+        <div class="rule-list">
+          <article><span>01</span><div><b>Claim a free node</b><p>A new node instantly restores your heart. One player fits in each node.</p></div></article>
+          <article><span>02</span><div><b>Never camp</b><p>Your heart drains quickly while occupying a node, so rotate before it reaches zero.</p></div></article>
+          <article><span>03</span><div><b>Manage exposure</b><p>Your exposure timer rises outside nodes and pauses inside. Higher exposure makes the arena more dangerous.</p></div></article>
+          <article><span>04</span><div><b>Use the center</b><p>The center heals slowly, but exposure keeps increasing. It is a recovery stop—not permanent safety.</p></div></article>
+          <article><span>05</span><div><b>Be the last alive</b><p>After each elimination the arena shrinks and one node disappears. The final geometry stays at least triangular.</p></div></article>
+        </div>
+      </section>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
