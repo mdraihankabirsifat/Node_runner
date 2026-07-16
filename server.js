@@ -8,7 +8,7 @@ import { GameRoom } from './server/GameRoom.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = process.env.PORT || 3000;
 
 const app = express();
 const server = http.createServer(app);
@@ -28,7 +28,10 @@ app.use(express.static(path.join(__dirname, 'public'), {
   },
 }));
 app.get('/health', (_request, response) => {
-  response.json({ ok: true, rooms: rooms.size, uptime: process.uptime() });
+  response.status(200).json({
+    status: 'ok',
+    service: 'node-runner',
+  });
 });
 
 const rooms = new Map();
@@ -163,6 +166,6 @@ setInterval(() => {
   }
 }, 1000 / BALANCE.tickRate);
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Node Runner server is running at http://localhost:${PORT}`);
 });

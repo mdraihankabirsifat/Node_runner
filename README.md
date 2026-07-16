@@ -93,15 +93,20 @@ All values can be changed in `server/constants.js`.
 
 ### Requirements
 
-- Node.js 18 or newer
+- Node.js 24 LTS
 - npm
 
 ### Installation
 
-Open the project folder in VS Code and run:
+Clone or open the repository root, then install production dependencies:
 
 ```powershell
 npm install
+```
+
+Start the Express and Socket.IO server:
+
+```powershell
 npm start
 ```
 
@@ -110,6 +115,8 @@ Open:
 ```text
 http://localhost:3000
 ```
+
+> Do not use the VS Code Live Server extension. It serves only the browser files and bypasses the Node.js/Socket.IO server required for rooms, bots, host/join, and realtime gameplay.
 
 For automatic server restart during development:
 
@@ -152,11 +159,45 @@ Windows Firewall may ask for permission. Allow Node.js on the private network.
 
 A room code works only when all players are connected to the **same running Node Runner server**.
 
-## Internet multiplayer
+## Deploy publicly on Render
 
-For players outside the host's local network, deploy the whole Node.js project to a hosting platform that supports long-running Node processes and WebSocket connections. After deployment, every player opens the same deployed URL and uses the host/join code normally.
+This repository is configured to deploy as one Render Web Service using the root-level `render.yaml`. Express serves the complete `public/` folder and Socket.IO shares the same HTTP server and public origin.
 
-This prototype does not include accounts, matchmaking, persistent storage, anti-cheat, or reconnect-to-running-match support.
+### GitHub and Blueprint deployment
+
+1. Commit and push the repository to GitHub.
+2. In Render, choose **New → Blueprint**.
+3. Connect the GitHub repository.
+4. Select the repository's `render.yaml`.
+5. Confirm the `node-runner` Web Service and deploy it.
+6. Render automatically deploys every commit pushed to the connected `main` branch.
+
+The Blueprint configures:
+
+- Runtime: Node
+- Region: Singapore
+- Plan: Free
+- Instances: 1
+- Build command: `npm ci`
+- Start command: `npm start`
+- Health check path: `/health`
+- Auto deploy: Every commit to `main`
+
+For manual Web Service creation instead of a Blueprint, use the same values and leave the root directory blank because `package.json` is in the repository root.
+
+### Playable URL
+
+```text
+https://YOUR-RENDER-SERVICE-NAME.onrender.com
+```
+
+Replace the placeholder after Render assigns the final service URL. Every player must open the same deployed URL for room codes and multiplayer synchronization to work.
+
+### In-memory Game Jam state
+
+Rooms, players, matches, and bots intentionally remain in server memory. No database is required. This keeps the Game Jam deployment simple, but active rooms are lost whenever Render restarts, redeploys, spins down, or replaces the service instance. Keep the service at one instance unless a shared Socket.IO adapter and shared room store are added later.
+
+This prototype does not include accounts, persistent matchmaking, saved rooms, anti-cheat, or reconnect-to-running-match support.
 
 ## Project structure
 
@@ -271,3 +312,5 @@ Create a pull request into `main` after the team tests the game.
 - The client uses keyboard controls and is optimized for desktop browsers.
 - No sound assets, character sprites, accounts, saved progression, or public matchmaking are included.
 - Internet play requires deployment to a WebSocket-capable Node.js host.
+- Render restarts, deploys, and free-tier spin-downs clear all in-memory rooms.
+- The current in-memory Socket.IO room model must run as a single service instance.
