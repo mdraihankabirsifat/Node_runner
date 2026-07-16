@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#08101f" />
+    <title>Node Runner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div class="ambient ambient-one"></div>
+      <div class="ambient ambient-two"></div>
+
+      <section id="menu-screen" class="screen menu-screen active">
+        <header class="topbar">
+          <div class="brand-mini"><span class="brand-dot"></span> NODE RUNNER</div>
+          <button id="how-button" class="ghost-button">How to play</button>
+        </header>
+
+        <main class="menu-layout">
+          <div class="hero-copy">
+            <div class="eyebrow">2D COMPETITIVE SURVIVAL</div>
+            <h1>RUN. CLAIM.<br /><span>SURVIVE.</span></h1>
+            <p>
+              There is always one fewer node than runners. Capture a new corner to refill
+              health, rotate before the node burns you out, and survive the shrinking arena.
+            </p>
+            <div class="rule-chips">
+              <span>💓 Health</span>
+              <span>⏱ Exposure timer</span>
+              <span>⚡ Exclusive nodes</span>
+            </div>
+          </div>
+
+          <div class="control-card glass-card">
+            <div class="card-title-row">
+              <div>
+                <p class="small-label">MATCH SETUP</p>
+                <h2>Enter the circuit</h2>
+              </div>
+              <div id="connection-pill" class="connection-pill connecting">Connecting…</div>
+            </div>
+
+            <label class="field-label" for="player-name">Runner name</label>
+            <input id="player-name" class="text-input" maxlength="16" value="Runner" autocomplete="off" />
+
+            <div class="setting-grid">
+              <div>
+                <label class="field-label" for="player-count">Total runners</label>
+                <div class="stepper">
+                  <button id="count-minus" type="button">−</button>
+                  <strong id="player-count-value">6</strong>
+                  <button id="count-plus" type="button">+</button>
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Arena</label>
+                <div class="arena-tabs" id="arena-tabs">
+                  <button class="arena-tab active" data-arena="polygon">Polygon</button>
+                  <button class="arena-tab" data-arena="football">Pitch</button>
+                  <button class="arena-tab" data-arena="circle">Circle</button>
+                </div>
+              </div>
+            </div>
+
+            <button id="bots-button" class="primary-button large-button">
+              <span class="button-icon">🤖</span>
+              <span><strong>Play with bots</strong><small>Start instantly</small></span>
+              <span class="button-arrow">→</span>
+            </button>
+
+            <div class="split-actions">
+              <button id="host-button" class="secondary-button">
+                <span>🌐</span><strong>Host game</strong><small>Create a room code</small>
+              </button>
+              <button id="join-button" class="secondary-button">
+                <span>🔑</span><strong>Join game</strong><small>Enter a host code</small>
+              </button>
+            </div>
+
+            <div id="join-panel" class="join-panel hidden">
+              <label class="field-label" for="room-code-input">Room code</label>
+              <div class="join-row">
+                <input id="room-code-input" class="text-input room-code-input" maxlength="5" placeholder="ABCDE" autocomplete="off" />
+                <button id="join-confirm-button" class="primary-button">Join</button>
+              </div>
+            </div>
+
+            <p id="menu-error" class="error-message hidden"></p>
+          </div>
+        </main>
+      </section>
+
+      <section id="lobby-screen" class="screen lobby-screen">
+        <header class="topbar">
+          <button id="lobby-back-button" class="ghost-button">← Leave room</button>
+          <div class="brand-mini"><span class="brand-dot"></span> NODE RUNNER</div>
+        </header>
+
+        <main class="lobby-layout">
+          <div class="lobby-code-card glass-card">
+            <p class="small-label">ROOM CODE</p>
+            <button id="copy-code-button" class="room-code-display" title="Copy room code">-----</button>
+            <p>Share this code with your teammates. Everyone must connect to the same server.</p>
+            <div class="lobby-status-line"><span class="live-dot"></span><span id="lobby-status-text">Waiting for runners…</span></div>
+          </div>
+
+          <div class="lobby-main-card glass-card">
+            <div class="card-title-row">
+              <div>
+                <p class="small-label">MATCH LOBBY</p>
+                <h2 id="lobby-title">Assemble your runners</h2>
+              </div>
+              <span id="host-badge" class="host-badge hidden">HOST</span>
+            </div>
+
+            <div id="lobby-player-list" class="lobby-player-list"></div>
+
+            <div id="host-settings" class="host-settings hidden">
+              <div class="setting-grid compact">
+                <label>
+                  <span class="field-label">Total runners</span>
+                  <select id="lobby-player-count" class="select-input">
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6" selected>6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="field-label">Arena</span>
+                  <select id="lobby-arena" class="select-input">
+                    <option value="polygon">Polygon</option>
+                    <option value="football">Football pitch</option>
+                    <option value="circle">Circle</option>
+                  </select>
+                </label>
+              </div>
+              <label class="toggle-row">
+                <input id="fill-bots-toggle" type="checkbox" checked />
+                <span class="toggle-visual"></span>
+                <span><strong>Fill empty slots with bots</strong><small>Recommended for quick testing</small></span>
+              </label>
+              <button id="start-game-button" class="primary-button large-button">
+                <span class="button-icon">⚡</span>
+                <span><strong>Start match</strong><small>Launch the arena</small></span>
+                <span class="button-arrow">→</span>
+              </button>
+            </div>
+            <p id="lobby-wait-message" class="wait-message">Waiting for the host to start the match…</p>
+            <p id="lobby-error" class="error-message hidden"></p>
+          </div>
+        </main>
+      </section>
+
+      <section id="game-screen" class="screen game-screen">
+        <div class="game-shell">
+          <main class="canvas-column">
+            <div class="game-topbar glass-card">
+              <div>
+                <span class="small-label">ROOM</span>
+                <strong id="game-room-code">-----</strong>
+              </div>
+              <div class="round-display">
+                <span class="small-label">ROUND</span>
+                <strong id="round-value">1</strong>
+              </div>
+              <div class="state-display">
+                <span id="state-dot" class="live-dot"></span>
+                <strong id="game-state-text">Connecting</strong>
+              </div>
+              <button id="game-leave-button" class="ghost-button danger">Leave</button>
+            </div>
+
+            <div id="canvas-wrap" class="canvas-wrap">
+              <canvas id="game-canvas" width="1280" height="720"></canvas>
+              <div id="center-message" class="center-message hidden"></div>
+              <div id="gameover-overlay" class="gameover-overlay hidden">
+                <p class="small-label">MATCH COMPLETE</p>
+                <h2 id="winner-title">Winner</h2>
+                <p id="winner-subtitle"></p>
+                <button id="restart-button" class="primary-button hidden">Play again</button>
+                <p id="restart-wait" class="wait-message hidden">Waiting for the host…</p>
+              </div>
+            </div>
+
+            <div class="controls-hint">Move with <kbd>WASD</kbd> or <kbd>Arrow keys</kbd> · New nodes refill health · Timer pauses only inside a claimed node</div>
+          </main>
+
+          <aside class="stats-panel glass-card">
+            <div class="stats-header">
+              <div>
+                <p class="small-label">LIVE RUNNERS</p>
+                <h3>Player status</h3>
+              </div>
+              <span id="alive-count" class="alive-count">0</span>
+            </div>
+            <div id="player-stats-list" class="player-stats-list"></div>
+            <div class="event-section">
+              <p class="small-label">EVENT FEED</p>
+              <div id="event-feed" class="event-feed"></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <div id="how-modal" class="modal-backdrop hidden">
+        <div class="modal-card glass-card">
+          <button id="how-close-button" class="modal-close">×</button>
+          <p class="small-label">CORE RULES</p>
+          <h2>How to survive</h2>
+          <div class="rules-list">
+            <article><span>1</span><div><strong>Race for a node</strong><p>There is always one fewer active node than alive runners.</p></div></article>
+            <article><span>2</span><div><strong>Keep rotating</strong><p>A different node restores health to 100. Staying in a node drains health quickly.</p></div></article>
+            <article><span>3</span><div><strong>Manage two stats</strong><p>Health reaches zero or the exposure timer reaches its limit: you are eliminated.</p></div></article>
+            <article><span>4</span><div><strong>Use the center carefully</strong><p>The center restores health slowly, but your timer continues increasing.</p></div></article>
+            <article><span>5</span><div><strong>Last runner wins</strong><p>After every elimination, the arena shrinks and one node disappears.</p></div></article>
+          </div>
+        </div>
+      </div>
+
+      <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/js/main.js"></script>
+  </body>
+</html>
