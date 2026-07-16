@@ -2,9 +2,8 @@ import { BALANCE, WORLD } from './constants.js';
 
 const TAU = Math.PI * 2;
 
-function regularPolygonVertices(sides, radius) {
+function regularPolygonVertices(sides, radius, startAngle = -Math.PI / 2) {
   const vertices = [];
-  const startAngle = -Math.PI / 2;
   for (let i = 0; i < sides; i += 1) {
     const angle = startAngle + (i * TAU) / sides;
     vertices.push({
@@ -99,7 +98,7 @@ function polygonPerimeterPoints(vertices, count) {
 
 export function buildArena(arenaType, aliveCount, initialPlayerCount) {
   const activeNodeCount = Math.max(1, aliveCount - 1);
-  const geometrySides = Math.max(3, aliveCount - 1);
+  const geometrySides = aliveCount === 3 ? 4 : Math.max(3, aliveCount - 1);
   const survivalRatio = aliveCount / initialPlayerCount;
   const shrink = 0.72 + survivalRatio * 0.28;
   const radius = 285 * shrink;
@@ -144,7 +143,8 @@ export function buildArena(arenaType, aliveCount, initialPlayerCount) {
       cornerRadius: 16,
     };
   } else {
-    vertices = regularPolygonVertices(geometrySides, radius);
+    const polygonStartAngle = geometrySides === 4 ? -Math.PI * 3 / 4 : -Math.PI / 2;
+    vertices = regularPolygonVertices(geometrySides, radius, polygonStartAngle);
     if (activeNodeCount === geometrySides) {
       nodePositions = vertices.map((point) => ({ ...point }));
     } else {

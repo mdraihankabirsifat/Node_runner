@@ -15,8 +15,8 @@ Build a fast top-down 2D competitive survival game in JavaScript. The game combi
 - Total match size is configurable from 4 to 8.
 - Human-only and bot matches use a minimum of 4 total runners.
 - Mixed matches require at least 2 human slots; bots may be 0 or more, and the combined total must be 4 to 8.
-- The polygon geometry never becomes smaller than a triangle.
-- With two runners remaining, the geometry is still triangular but only one active node exists.
+- With three runners remaining, polygon mode uses a square with two nodes on opposite corners.
+- With two runners remaining, polygon mode uses a triangle with one active node.
 
 ### Player parameters
 

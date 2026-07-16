@@ -435,6 +435,12 @@ export class UI {
       if (b.id === snapshot.winnerId) return 1;
       return b.playingTime - a.playingTime;
     });
+    if (!this.elements.finalStats) {
+      this.elements.finalStats = document.createElement('div');
+      this.elements.finalStats.id = 'final-stats';
+      this.elements.finalStats.className = 'final-stats';
+      this.elements.winnerSubtitle.insertAdjacentElement('afterend', this.elements.finalStats);
+    }
     this.elements.finalStats.innerHTML = `
       <div class="final-stat-row final-stat-header">
         <span>Runner</span>

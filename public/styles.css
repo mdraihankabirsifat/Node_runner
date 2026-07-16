@@ -788,15 +788,16 @@ select:focus-visible {
 }
 
 .gameover-overlay {
-  position: absolute;
+  position: fixed;
+  z-index: 25;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 18px;
-  background: rgba(3, 8, 16, 0.75);
-  backdrop-filter: blur(8px);
+  background: rgba(3, 8, 16, 0.92);
+  backdrop-filter: blur(12px);
 }
 
 .gameover-overlay h2 {
@@ -812,6 +813,7 @@ select:focus-visible {
 
 .final-stats {
   width: min(760px, 96%);
+  flex: 0 0 auto;
   overflow: hidden;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -892,6 +894,25 @@ select:focus-visible {
 .gameover-overlay .primary-button {
   margin-top: 8px;
   min-width: 160px;
+}
+
+@media (max-height: 650px) {
+  .gameover-overlay {
+    padding: 8px;
+  }
+
+  .gameover-overlay h2 {
+    font-size: 30px;
+  }
+
+  .final-stat-row {
+    min-height: 25px;
+    padding: 3px 8px;
+  }
+
+  .efficiency-note {
+    margin: 2px 0 4px !important;
+  }
 }
 
 .controls-hint {

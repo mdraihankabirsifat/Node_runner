@@ -32,7 +32,7 @@ The HTML file is only the browser launcher and page structure. All gameplay, bot
 - High timer exposure increases field pressure near the timer limit
 - Elimination occurs when health reaches 0 or timer reaches its maximum
 - After an elimination, the arena shrinks and one node disappears
-- The geometry never becomes smaller than a triangle
+- Polygon mode uses a square with diagonal nodes at three runners, then a triangle with one node at two runners
 - The last surviving player wins
 
 ### Player information

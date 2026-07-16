@@ -51,24 +51,33 @@ test('arena always has one fewer active node than alive players', () => {
   }
 });
 
-test('with three players, the lower polygon node stays on the triangle base', () => {
+test('with three players, polygon mode uses a square with diagonal nodes', () => {
   const arena = buildArena('polygon', 3, 4);
-  const [, lowerNode] = arena.nodes;
-  const [, lowerRight, lowerLeft] = arena.boundary.vertices;
+  const [firstNode, secondNode] = arena.nodes;
+  const [topLeft, topRight, bottomRight, bottomLeft] = arena.boundary.vertices;
 
-  assert.equal(arena.geometrySides, 3);
+  assert.equal(arena.geometrySides, 4);
   assert.equal(arena.nodes.length, 2);
-  assert.ok(Math.abs(lowerNode.y - lowerRight.y) < 0.001);
-  assert.ok(Math.abs(lowerNode.y - lowerLeft.y) < 0.001);
-  assert.ok(lowerNode.x > lowerLeft.x);
-  assert.ok(lowerNode.x < lowerRight.x);
+  assert.ok(Math.abs(topLeft.y - topRight.y) < 0.001);
+  assert.ok(Math.abs(bottomLeft.y - bottomRight.y) < 0.001);
+  assert.ok(Math.abs(firstNode.x - topLeft.x) < 0.001);
+  assert.ok(Math.abs(firstNode.y - topLeft.y) < 0.001);
+  assert.ok(Math.abs(secondNode.x - bottomRight.x) < 0.001);
+  assert.ok(Math.abs(secondNode.y - bottomRight.y) < 0.001);
 
-  const player = { x: lowerNode.x, y: lowerNode.y, radius: BALANCE.playerRadius };
+  const player = { x: secondNode.x, y: secondNode.y, radius: BALANCE.playerRadius };
   clampPlayerToArena(player, arena);
   assert.ok(
-    Math.hypot(player.x - lowerNode.x, player.y - lowerNode.y)
-      <= lowerNode.radius - 2,
+    Math.hypot(player.x - secondNode.x, player.y - secondNode.y)
+      <= secondNode.radius - 2,
   );
+});
+
+test('with two players, polygon mode keeps a triangle and one node', () => {
+  const arena = buildArena('polygon', 2, 4);
+  assert.equal(arena.geometrySides, 3);
+  assert.equal(arena.boundary.vertices.length, 3);
+  assert.equal(arena.nodes.length, 1);
 });
 
 test('the initial exposure timer limit is 30 seconds', () => {

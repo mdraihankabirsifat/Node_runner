@@ -14,8 +14,14 @@
 ### Match results
 
 - The game-over screen shows every runner in one frame.
+- The results use a full-viewport overlay so they are not clipped by the canvas.
 - Results include distance covered, active playing time, and survival efficiency.
 - Survival efficiency is the percentage of total active match time that the runner survived.
+
+### Reduced arenas
+
+- Three remaining runners use a square with two nodes on opposite corners.
+- Two remaining runners use a triangle with one node.
 
 ## 1.1.0 — Four-change update
 
