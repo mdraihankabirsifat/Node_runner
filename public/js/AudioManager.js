@@ -262,6 +262,22 @@ export class AudioManager {
     this.pauseAudio('running', 'movement stopped');
   }
 
+  cancelMatchCues(reason = 'match exited') {
+    this.eliminationCueUntil = 0;
+    this.specialCueDepth = 0;
+    this.interruptedBgmId = null;
+
+    for (const id of ['running', 'nodeReach', 'roundEnd', 'elimination']) {
+      const audio = this.audioElements.get(id);
+      if (!audio) continue;
+      if (!audio.paused) {
+        console.info(`[Audio] Stopping ${this.getFileName(id)} (${reason})`);
+        audio.pause();
+      }
+      audio.currentTime = 0;
+    }
+  }
+
   playNodeReach() {
     if (!this.settings.soundEnabled || this.settings.soundVolume <= 0) return;
 

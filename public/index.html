@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=20260721-round-health-theme" />
+    <link rel="stylesheet" href="/styles.css?v=20260721-live-audio-motion" />
    </head>
   <body>
     <div id="app">
@@ -16,24 +16,56 @@
       <div class="ambient ambient-two"></div>
 
       <section id="menu-screen" class="screen menu-screen active">
+        <div class="menu-motion" aria-hidden="true">
+          <i class="motion-line motion-line-one"></i>
+          <i class="motion-line motion-line-two"></i>
+          <i class="motion-line motion-line-three"></i>
+          <i class="motion-orb motion-orb-one"></i>
+          <i class="motion-orb motion-orb-two"></i>
+          <i class="motion-orb motion-orb-three"></i>
+        </div>
         <header class="topbar">
           <div class="topbar-actions">
-            <button id="how-button" class="nav-button">MENU</button>
-            <button id="settings-button" class="nav-button">SETTINGS</button>
+            <button id="how-button" class="nav-button"><span aria-hidden="true">?</span> HOW TO PLAY</button>
+            <button id="settings-button" class="nav-button"><span aria-hidden="true">&#9881;</span> SETTINGS</button>
           </div>
         </header>
 
         <main class="menu-layout">
           <div class="hero-copy">
-            <h1 class="main-title">NODE<br /><span>RUNNER</span></h1>
-            <p class="tagline">KICKOFF. RUN. SURVIVE.</p>
+            <div class="hero-kicker"><span class="live-dot"></span> LIVE MULTIPLAYER CIRCUIT</div>
+            <h1 class="main-title"><span class="title-solid">NODE</span><span class="title-outline">RUNNER</span></h1>
+            <p class="tagline">Claim your node.<br /><strong>Outrun the collapse.</strong></p>
+            <p class="hero-description">A tactical survival race where every safe position is temporary and only one runner controls the final circuit.</p>
+
+            <div class="rule-chips" aria-label="Game highlights">
+              <span><b>01</b> Exclusive nodes</span>
+              <span><b>02</b> Shrinking arena</span>
+              <span><b>03</b> Last runner wins</span>
+            </div>
+
+            <div class="arena-preview" aria-hidden="true">
+              <div class="arena-grid"></div>
+              <span class="preview-node node-one"></span>
+              <span class="preview-node node-two"></span>
+              <span class="preview-node node-three"></span>
+              <span class="preview-route route-one"></span>
+              <span class="preview-route route-two"></span>
+              <span class="preview-center">CORE</span>
+              <img src="/characters/char%201%20female/run/right/1.png" alt="" />
+              <div class="preview-readout"><small>ARENA STATUS</small><strong>CONTESTED</strong></div>
+            </div>
           </div>
 
           <div class="control-card glass-card">
+            <span class="hud-corner hud-corner-top" aria-hidden="true"></span>
+            <span class="hud-corner hud-corner-bottom" aria-hidden="true"></span>
+            <div class="terminal-label"><span>NR // LOBBY</span><span>BUILD 01</span></div>
             <div class="card-title-row">
               <div>
-                <p class="small-label">MATCH SETUP</p>
-                <h2>Enter the circuit</h2>
+                <p class="small-label">MATCH TERMINAL</p>
+                <h2>Choose your run</h2>
+                <p class="card-subtitle">Configure the circuit. Enter when ready.</p>
               </div>
               <div id="connection-pill" class="connection-pill connecting">Connecting…</div>
             </div>
@@ -96,7 +128,7 @@
 
             <button id="bots-button" class="primary-button large-button">
               <span class="button-icon">🤖</span>
-              <span><strong>Play with bots</strong><small>Start instantly</small></span>
+              <span><strong>Enter bot arena</strong><small>Deploy instantly</small></span>
               <span class="button-arrow">→</span>
             </button>
 
@@ -228,6 +260,40 @@
               <div class="state-display">
                 <span id="state-dot" class="live-dot"></span>
                 <strong id="game-state-text">Connecting</strong>
+              </div>
+              <div class="game-audio-menu">
+                <button id="game-audio-toggle" class="game-audio-toggle" type="button" aria-expanded="false" aria-controls="game-audio-panel">
+                  <span aria-hidden="true">&#9835;</span><strong>Audio</strong>
+                </button>
+                <div id="game-audio-panel" class="game-audio-panel hidden" role="group" aria-label="In-game audio settings">
+                  <div class="game-audio-heading"><strong>Match audio</strong><small>Saved automatically</small></div>
+                  <div class="game-audio-row">
+                    <div class="game-audio-row-title">
+                      <label for="game-music-volume">Music</label>
+                      <label class="switch compact-switch" aria-label="Enable music while playing">
+                        <input id="game-music-enabled" type="checkbox" />
+                        <span></span>
+                      </label>
+                    </div>
+                    <div class="game-volume-row">
+                      <input id="game-music-volume" type="range" min="0" max="100" step="5" aria-label="In-game music volume" />
+                      <output id="game-music-volume-value" for="game-music-volume">25%</output>
+                    </div>
+                  </div>
+                  <div class="game-audio-row">
+                    <div class="game-audio-row-title">
+                      <label for="game-sound-volume">Game sound</label>
+                      <label class="switch compact-switch" aria-label="Enable game sounds while playing">
+                        <input id="game-sound-enabled" type="checkbox" />
+                        <span></span>
+                      </label>
+                    </div>
+                    <div class="game-volume-row">
+                      <input id="game-sound-volume" type="range" min="0" max="100" step="5" aria-label="In-game sound volume" />
+                      <output id="game-sound-volume-value" for="game-sound-volume">70%</output>
+                    </div>
+                  </div>
+                </div>
               </div>
               <button id="game-leave-button" class="ghost-button danger">Leave</button>
             </div>
@@ -371,6 +437,6 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="/js/main.js?v=20260720-volume-preview"></script>
+    <script type="module" src="/js/main.js?v=20260721-live-audio-motion"></script>
   </body>
 </html>

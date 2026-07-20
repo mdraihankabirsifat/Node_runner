@@ -133,6 +133,14 @@ export class UI {
       roundValue: document.querySelector('#round-value'),
       gameStateText: document.querySelector('#game-state-text'),
       stateDot: document.querySelector('#state-dot'),
+      gameAudioToggle: document.querySelector('#game-audio-toggle'),
+      gameAudioPanel: document.querySelector('#game-audio-panel'),
+      gameMusicEnabled: document.querySelector('#game-music-enabled'),
+      gameMusicVolume: document.querySelector('#game-music-volume'),
+      gameMusicVolumeValue: document.querySelector('#game-music-volume-value'),
+      gameSoundEnabled: document.querySelector('#game-sound-enabled'),
+      gameSoundVolume: document.querySelector('#game-sound-volume'),
+      gameSoundVolumeValue: document.querySelector('#game-sound-volume-value'),
       gameLeaveButton: document.querySelector('#game-leave-button'),
       centerMessage: document.querySelector('#center-message'),
       aliveCount: document.querySelector('#alive-count'),
@@ -247,6 +255,35 @@ export class UI {
     this.elements.musicVolume.addEventListener('input', () => saveAudioSettings('music'));
     this.elements.soundEnabled.addEventListener('change', () => saveAudioSettings());
     this.elements.soundVolume.addEventListener('input', () => saveAudioSettings('sound'));
+
+    const closeGameAudio = () => {
+      this.elements.gameAudioPanel.classList.add('hidden');
+      this.elements.gameAudioToggle.setAttribute('aria-expanded', 'false');
+    };
+    const saveGameAudioSettings = () => {
+      const saved = this.actions.saveAudioSettings({
+        musicEnabled: this.elements.gameMusicEnabled.checked,
+        musicVolume: Number(this.elements.gameMusicVolume.value),
+        soundEnabled: this.elements.gameSoundEnabled.checked,
+        soundVolume: Number(this.elements.gameSoundVolume.value),
+      });
+      this.renderAudioSettings(saved);
+    };
+    this.elements.gameAudioToggle.addEventListener('click', () => {
+      const opening = this.elements.gameAudioPanel.classList.contains('hidden');
+      this.elements.gameAudioPanel.classList.toggle('hidden', !opening);
+      this.elements.gameAudioToggle.setAttribute('aria-expanded', String(opening));
+    });
+    this.elements.gameMusicEnabled.addEventListener('change', saveGameAudioSettings);
+    this.elements.gameMusicVolume.addEventListener('input', saveGameAudioSettings);
+    this.elements.gameSoundEnabled.addEventListener('change', saveGameAudioSettings);
+    this.elements.gameSoundVolume.addEventListener('input', saveGameAudioSettings);
+    document.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element) || !event.target.closest('.game-audio-menu')) {
+        closeGameAudio();
+      }
+    });
+
     this.elements.resetProgressButton.addEventListener('click', () => {
       if (!window.confirm('Reset all locally saved match records and achievements?')) return;
       this.renderProfile(this.actions.resetProgress());
@@ -257,6 +294,7 @@ export class UI {
       if (!this.elements.settingsModal.classList.contains('hidden')) {
         closeSettings();
       }
+      closeGameAudio();
       this.elements.howModal.classList.add('hidden');
     });
 
@@ -318,6 +356,15 @@ export class UI {
     this.elements.soundVolume.value = String(this.audioSettings.soundVolume ?? 70);
     this.elements.soundVolume.disabled = !this.elements.soundEnabled.checked;
     this.elements.soundVolumeValue.textContent = `${this.elements.soundVolume.value}%`;
+
+    this.elements.gameMusicEnabled.checked = this.elements.musicEnabled.checked;
+    this.elements.gameMusicVolume.value = this.elements.musicVolume.value;
+    this.elements.gameMusicVolume.disabled = !this.elements.gameMusicEnabled.checked;
+    this.elements.gameMusicVolumeValue.textContent = this.elements.musicVolumeValue.textContent;
+    this.elements.gameSoundEnabled.checked = this.elements.soundEnabled.checked;
+    this.elements.gameSoundVolume.value = this.elements.soundVolume.value;
+    this.elements.gameSoundVolume.disabled = !this.elements.gameSoundEnabled.checked;
+    this.elements.gameSoundVolumeValue.textContent = this.elements.soundVolumeValue.textContent;
   }
 
   renderProfile(profile = {}) {
@@ -604,6 +651,9 @@ export class UI {
     this.currentRoom = { ...(this.currentRoom ?? {}), code: snapshot.code, hostId: snapshot.hostId };
     this.latestGameSnapshot = snapshot;
     this.clearEliminationMessage();
+    this.renderAudioSettings(this.audioSettings);
+    this.elements.gameAudioPanel.classList.add('hidden');
+    this.elements.gameAudioToggle.setAttribute('aria-expanded', 'false');
     this.showScreen('game');
     this.elements.gameRoomCode.textContent = snapshot.code;
     this.elements.gameoverOverlay.classList.add('hidden');
@@ -776,6 +826,8 @@ export class UI {
     this.showMenuError('');
     this.showLobbyError('');
     this.elements.joinPanel.classList.add('hidden');
+    this.elements.gameAudioPanel.classList.add('hidden');
+    this.elements.gameAudioToggle.setAttribute('aria-expanded', 'false');
     this.elements.gameoverOverlay.classList.add('hidden');
     this.elements.centerMessage.classList.add('hidden');
     this.showScreen('menu');

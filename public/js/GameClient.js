@@ -1,7 +1,7 @@
 import { InputController } from './InputController.js?v=20260720-manual-start';
 import { Renderer } from './Renderer.js?v=20260720-elimination-run';
-import { UI } from './UI.js?v=20260720-volume-preview';
-import { AudioManager } from './AudioManager.js?v=20260720-volume-preview';
+import { UI } from './UI.js?v=20260721-live-audio-motion';
+import { AudioManager } from './AudioManager.js?v=20260721-live-audio-motion';
 import { PlayerPreferences } from './PlayerPreferences.js?v=20260720-intro-update';
 
 export class GameClient {
@@ -19,6 +19,7 @@ export class GameClient {
     this.lastInputSentAt = 0;
     this.lastFrameAt = performance.now();
     this.isPaused = false;
+    this.isLeavingRoom = false;
     this.preferences = new PlayerPreferences();
     this.audio = new AudioManager(this.preferences.getSettings());
 
@@ -112,6 +113,7 @@ export class GameClient {
     });
 
     this.socket.on('game:event', (event) => {
+      if (this.isLeavingRoom) return;
       this.ui.addEvent(event);
       this.audio.playEffect(event.type);
       if (event.type === 'ELIMINATION') {
@@ -240,14 +242,21 @@ export class GameClient {
   }
 
   async leaveRoom() {
+    if (this.isLeavingRoom) return;
+    this.isLeavingRoom = true;
     this.setPaused(false, { silent: true });
     this.input.setEnabled(false);
-    await this.emitWithAck('room:leave', {}, 1800);
-    this.roomCode = null;
-    this.latestSnapshot = null;
-    this.renderer.clear();
-    this.audio.playBGM('lobby');
-    this.ui.resetToMenu();
+    this.audio.cancelMatchCues('local player left the match');
+    try {
+      await this.emitWithAck('room:leave', {}, 1800);
+      this.roomCode = null;
+      this.latestSnapshot = null;
+      this.renderer.clear();
+      this.audio.playBGM('lobby');
+      this.ui.resetToMenu();
+    } finally {
+      this.isLeavingRoom = false;
+    }
   }
 
   sendInput(now) {
