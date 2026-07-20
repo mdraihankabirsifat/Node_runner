@@ -189,3 +189,11 @@ All tuning values are defined in [server/constants.js](server/constants.js).
 ## Technology
 
 JavaScript · HTML5 Canvas · Node.js · Express · Socket.IO · Electron
+
+## License and copyright
+
+Copyright © 2026 Node Runner project authors. All rights reserved.
+
+This source code, game, and accompanying materials may not be copied, modified, redistributed, sublicensed, or used commercially without prior written permission from the copyright holders. No licence is granted except the limited permission required to view this public repository and run the game for personal evaluation.
+
+Third-party assets and dependencies remain subject to their respective licences and copyright terms.
