@@ -1,4 +1,23 @@
 # Node Runner
+## 📸 Screenshots
+
+### Home View
+![Screenshot 1](Asset/ss/1.png)
+
+### Polygon View
+![Screenshot 2](Asset/ss/2.png)
+
+### Pitch View
+![Screenshot 3](Asset/ss/3.png)
+
+### Circle View
+![Screenshot 4](Asset/ss/4.png)
+
+### Eminination
+![Screenshot 5](Asset/ss/5.png)
+
+### Result 
+![Screenshot 6](Asset/ss/6.png)
 
 Node Runner is a server-authoritative 2D survival game built with Node.js, Express, Socket.IO, and HTML5 Canvas. The browser handles rendering and input, while the server owns room state, bot behavior, arena rules, collisions, timer and health updates, and win conditions.
 
