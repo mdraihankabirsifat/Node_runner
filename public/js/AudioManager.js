@@ -1,90 +1,419 @@
-const EFFECTS = Object.freeze({
-  click: [{ frequency: 360, duration: 0.045, type: 'sine', volume: 0.12 }],
-  MATCH_START: [{ frequency: 440, duration: 0.12 }, { frequency: 660, delay: 0.1, duration: 0.16 }],
-  NODE_CLAIM: [{ frequency: 520, duration: 0.08 }, { frequency: 780, delay: 0.06, duration: 0.13 }],
-  ELIMINATION: [{ frequency: 180, duration: 0.2, type: 'sawtooth' }, { frequency: 110, delay: 0.12, duration: 0.25 }],
-  ROUND_START: [{ frequency: 330, duration: 0.08 }, { frequency: 495, delay: 0.07, duration: 0.12 }],
-  GAME_OVER: [{ frequency: 392, duration: 0.16 }, { frequency: 523, delay: 0.13, duration: 0.2 }, { frequency: 659, delay: 0.27, duration: 0.35 }],
-  achievement: [{ frequency: 523, duration: 0.1 }, { frequency: 659, delay: 0.1, duration: 0.12 }, { frequency: 784, delay: 0.21, duration: 0.28 }],
-});
-
 export class AudioManager {
   constructor(settings) {
     this.settings = { ...settings };
-    this.context = null;
-    this.musicTimer = null;
-    this.musicStep = 0;
+    this.audioContext = null;
+    this.fadeInterval = null;
+    this.currentBgmId = null;
+    this.currentLobbyIndex = 0;
+    this.specialCueDepth = 0;
+    this.interruptedBgmId = null;
+
+    this.trackOrder = ['lobby1', 'lobby2', 'lobby3'];
+
+    this.assets = {
+      lobby1: { src: '/music/lobby sampe 1.mp3', kind: 'music', loop: true, volumeScale: 0.4 },
+      lobby2: { src: '/music/lobby sample 2.mp3', kind: 'music', loop: true, volumeScale: 0.4 },
+      lobby3: { src: '/music/lobby sample 3.mp3', kind: 'music', loop: true, volumeScale: 0.4 },
+      gameStart: { src: '/music/game_start.mp3', kind: 'music', loop: false, volumeScale: 0.4 },
+      gameplay: { src: '/music/gameplay background.mp3', kind: 'music', loop: true, volumeScale: 0.4 },
+      running: { src: '/music/running.mp3', kind: 'sfx', loop: true, volumeScale: 1 },
+      nodeReach: { src: '/music/individual_node_reach.wav', kind: 'sfx', loop: false, volumeScale: 1 },
+      roundEnd: { src: '/music/fahhhhh.mp3', kind: 'sfx', loop: false, volumeScale: 1 },
+      elimination: { src: '/music/me_bhaga_bhaga.mp3', kind: 'sfx', loop: false, volumeScale: 1 },
+      intro: { src: '/music/intro.mp3', kind: 'music', loop: false, volumeScale: 0.4 },
+    };
+
+    this.audioElements = new Map();
+    for (const [id, asset] of Object.entries(this.assets)) {
+      this.audioElements.set(id, this.createAudioElement(id, asset));
+    }
 
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) this.stopMusic();
-      else this.startMusic();
+      if (document.hidden) {
+        this.pauseAll('tab hidden');
+        return;
+      }
+
+      if (this.settings.musicEnabled && this.settings.musicVolume > 0 && this.currentBgmId) {
+        this.playCurrentBgm('tab visible').catch(() => {});
+      }
+    });
+
+    this.audioElements.get('gameStart')?.addEventListener('ended', () => {
+      if (this.currentBgmId === 'gameStart') {
+        this.playBGM('gameplay', false);
+      }
     });
   }
 
   async unlock() {
-    const AudioContextClass = window.AudioContext ?? window.webkitAudioContext;
-    if (!AudioContextClass) return;
-    if (!this.context) this.context = new AudioContextClass();
-    if (this.context.state === 'suspended') await this.context.resume();
-    this.startMusic();
+    await this.resumeAudioContext('user interaction');
+
+    if (this.settings.musicEnabled && this.settings.musicVolume > 0 && this.currentBgmId) {
+      await this.playCurrentBgm('user interaction');
+    }
   }
 
   applySettings(settings) {
     this.settings = { ...settings };
-    if (this.settings.musicEnabled && this.settings.musicVolume > 0) this.startMusic();
-    else this.stopMusic();
+    this.updateVolumes();
+
+    if (this.settings.musicEnabled && this.settings.musicVolume > 0) {
+      if (this.currentBgmId) {
+        this.playCurrentBgm('settings changed').catch(() => {});
+      }
+    } else {
+      this.pauseCurrentMusic('music disabled');
+    }
+
+    if (!this.settings.soundEnabled || this.settings.soundVolume <= 0) {
+      this.pauseAudio('running', 'sound disabled');
+      this.pauseAudio('nodeReach', 'sound disabled');
+    }
   }
 
-  playTone({ frequency, delay = 0, duration = 0.12, type = 'sine', volume = 0.2 }, channelVolume) {
-    if (!this.context || this.context.state !== 'running') return;
-    const startAt = this.context.currentTime + delay;
-    const oscillator = this.context.createOscillator();
-    const gain = this.context.createGain();
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(frequency, startAt);
-    gain.gain.setValueAtTime(0.0001, startAt);
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume * channelVolume), startAt + 0.018);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-    oscillator.connect(gain);
-    gain.connect(this.context.destination);
-    oscillator.start(startAt);
-    oscillator.stop(startAt + duration + 0.02);
+  updateVolumes() {
+    for (const [id, audio] of this.audioElements) {
+      const asset = this.assets[id];
+      if (!asset) continue;
+      const volume = asset.kind === 'music'
+        ? (this.settings.musicVolume / 100) * asset.volumeScale
+        : (this.settings.soundVolume / 100) * asset.volumeScale;
+      audio.volume = volume;
+    }
+  }
+
+  playBGM(trackId, fade = true) {
+    if (trackId === 'introSequence') {
+      return this.playIntroSequence();
+    }
+    if (trackId === 'lobby') {
+      return this.playLobbyBGM(fade);
+    }
+
+    return this.playSpecificBGM(trackId, fade);
+  }
+
+  playLobbyBGM(fade = true) {
+    if (this.currentBgmId && this.isLobbyTrack(this.currentBgmId)) {
+      const currentIndex = this.trackOrder.indexOf(this.currentBgmId);
+      if (currentIndex >= 0) {
+        this.currentLobbyIndex = (currentIndex + 1) % this.trackOrder.length;
+      }
+    }
+
+    const nextTrackId = this.trackOrder[this.currentLobbyIndex] ?? 'lobby1';
+    this.currentLobbyIndex = (this.currentLobbyIndex + 1) % this.trackOrder.length;
+    return this.switchMusic(nextTrackId, fade, 'lobby');
+  }
+
+  playSpecificBGM(trackId, fade = true) {
+    if (!this.audioElements.has(trackId)) {
+      console.error(`[Audio] Unknown track requested: ${trackId}`);
+      return Promise.resolve();
+    }
+
+    if (trackId === this.currentBgmId) {
+      return this.playCurrentBgm('same track');
+    }
+
+    if (trackId === 'gameplay' || trackId === 'gameStart') {
+      this.currentLobbyIndex = 0;
+    }
+
+    return this.switchMusic(trackId, fade, trackId);
+  }
+
+  playIntroSequence() {
+    this.playSpecificBGM('intro', false);
+    setTimeout(() => {
+      if (this.currentBgmId === 'intro') {
+        this.playLobbyBGM(true);
+      }
+    }, 5000);
+  }
+
+  async switchMusic(trackId, fade, reason) {
+    const currentAudio = this.currentBgmId ? this.audioElements.get(this.currentBgmId) : null;
+    if (fade && currentAudio && !currentAudio.paused) {
+      await this.fadeOutAndStop(currentAudio, reason);
+    }
+
+    this.currentBgmId = trackId;
+    const nextAudio = this.audioElements.get(trackId);
+    if (!nextAudio) return;
+
+    nextAudio.loop = this.assets[trackId].loop;
+    this.updateVolumes();
+
+    if (this.settings.musicEnabled && this.settings.musicVolume > 0 && !document.hidden) {
+      await this.playAudioElement(trackId, reason);
+    }
+  }
+
+  async playCurrentBgm(reason = 'resume') {
+    if (!this.currentBgmId) return;
+    const audio = this.audioElements.get(this.currentBgmId);
+    if (!audio) return;
+
+    if (audio.paused) {
+      await this.playAudioElement(this.currentBgmId, reason);
+    }
+  }
+
+  async fadeOutAndStop(audio, reason) {
+    if (this.fadeInterval) clearInterval(this.fadeInterval);
+
+    const startVol = audio.volume;
+    const steps = 10;
+    const stepTime = 25;
+
+    await new Promise((resolve) => {
+      let currentStep = 0;
+      this.fadeInterval = setInterval(() => {
+        currentStep += 1;
+        if (currentStep >= steps) {
+          clearInterval(this.fadeInterval);
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = startVol;
+          console.info(`[Audio] Stopping ${this.getFileNameByAudio(audio)} (${reason})`);
+          resolve();
+          return;
+        }
+
+        audio.volume = startVol * (1 - currentStep / steps);
+      }, stepTime);
+    });
+  }
+
+  playSettingsMusic() {
+    this.playBGM('lobby', false);
+  }
+
+  stopSettingsMusic() {
+    this.playBGM('lobby', false);
+  }
+
+  startMovement() {
+    if (!this.settings.soundEnabled || this.settings.soundVolume <= 0) return;
+
+    const audio = this.audioElements.get('running');
+    if (!audio || !audio.paused) return;
+
+    this.updateVolumes();
+    this.playAudioElement('running', 'movement start').catch(() => {});
+  }
+
+  stopMovement() {
+    this.pauseAudio('running', 'movement stopped');
+  }
+
+  playNodeReach() {
+    if (!this.settings.soundEnabled || this.settings.soundVolume <= 0) return;
+
+    this.updateVolumes();
+    this.playAudioElement('nodeReach', 'node reached').catch(() => {});
   }
 
   playEffect(type) {
+    if (type === 'NODE_CLAIM') {
+      this.playNodeReach();
+    }
+    if (type === 'ARENA_SHRINK') {
+      this.playRoundEndCue();
+      return;
+    }
+
+    if (type === 'ELIMINATION') {
+      this.playEliminationCue();
+      return;
+    }
+  }
+
+  playRoundEndCue() {
+    if (!this.settings.musicEnabled || this.settings.musicVolume <= 0) return;
+    this.playInterruptingCue('roundEnd', 'round ended').catch(() => {});
+  }
+
+  playEliminationCue() {
     if (!this.settings.soundEnabled || this.settings.soundVolume <= 0) return;
-    const tones = EFFECTS[type];
-    if (!tones) return;
-    const channelVolume = this.settings.soundVolume / 100;
-    for (const tone of tones) this.playTone(tone, channelVolume);
+    this.playInterruptingCue('elimination', 'player eliminated').catch(() => {});
   }
 
-  playMusicNote() {
-    if (!this.settings.musicEnabled || document.hidden) return;
-    const notes = [220, 261.63, 329.63, 293.66, 392, 329.63, 261.63, 196];
-    const frequency = notes[this.musicStep % notes.length];
-    this.musicStep += 1;
-    const channelVolume = (this.settings.musicVolume / 100) * 0.18;
-    this.playTone({ frequency, duration: 0.75, type: 'sine', volume: 0.16 }, channelVolume);
-    this.playTone({ frequency: frequency / 2, duration: 0.85, type: 'triangle', volume: 0.08 }, channelVolume);
+  async playInterruptingCue(id, reason) {
+    const audio = this.audioElements.get(id);
+    if (!audio) return;
+
+    const bgmAudio = this.currentBgmId ? this.audioElements.get(this.currentBgmId) : null;
+    const shouldResumeBgm = Boolean(
+      bgmAudio && !bgmAudio.paused && !document.hidden && this.settings.musicEnabled && this.settings.musicVolume > 0,
+    );
+
+    if (shouldResumeBgm && this.specialCueDepth === 0) {
+      this.interruptedBgmId = this.currentBgmId;
+      console.info(`[Audio] Freezing ${this.getFileName(this.interruptedBgmId)} for ${this.getFileName(id)} (${reason})`);
+      bgmAudio.pause();
+    }
+
+    this.specialCueDepth += 1;
+    const finalize = () => {
+      this.specialCueDepth = Math.max(0, this.specialCueDepth - 1);
+      if (this.specialCueDepth > 0) return;
+
+      const resumeId = this.interruptedBgmId;
+      this.interruptedBgmId = null;
+      if (!resumeId) return;
+
+      if (this.settings.musicEnabled && this.settings.musicVolume > 0 && !document.hidden) {
+        console.info(`[Audio] Resuming ${this.getFileName(resumeId)} after ${this.getFileName(id)}`);
+        this.playCurrentBgm('special cue complete').catch(() => {});
+      }
+    };
+
+    return new Promise((resolve) => {
+      audio.addEventListener('ended', () => {
+        finalize();
+        resolve();
+      }, { once: true });
+
+      audio.addEventListener('error', () => {
+        finalize();
+        resolve();
+      }, { once: true });
+
+      this.playAudioElement(id, reason).then((started) => {
+        if (!started) {
+          finalize();
+          resolve();
+        }
+      });
+    });
+  }
+  pauseAll(reason) {
+    if (reason === 'tab hidden') {
+      this.specialCueDepth = 0;
+      this.interruptedBgmId = null;
+    }
+
+    for (const [id, audio] of this.audioElements) {
+      if (!audio.paused) {
+        console.info(`[Audio] Stopping ${this.getFileName(id)} (${reason})`);
+        audio.pause();
+      }
+    }
   }
 
-  startMusic() {
-    if (
-      this.musicTimer
-      || !this.context
-      || this.context.state !== 'running'
-      || !this.settings.musicEnabled
-      || this.settings.musicVolume <= 0
-      || document.hidden
-    ) return;
-    this.playMusicNote();
-    this.musicTimer = window.setInterval(() => this.playMusicNote(), 820);
+  pauseCurrentMusic(reason) {
+    if (!this.currentBgmId) return;
+    this.pauseAudio(this.currentBgmId, reason);
   }
 
-  stopMusic() {
-    if (!this.musicTimer) return;
-    window.clearInterval(this.musicTimer);
-    this.musicTimer = null;
+  pauseAudio(id, reason) {
+    const audio = this.audioElements.get(id);
+    if (!audio || audio.paused) return;
+    console.info(`[Audio] Stopping ${this.getFileName(id)} (${reason})`);
+    audio.pause();
+  }
+
+  async playAudioElement(id, reason) {
+    const audio = this.audioElements.get(id);
+    if (!audio) return;
+
+    this.updateVolumes();
+    console.info(`[Audio] Playing ${this.getFileName(id)}${reason ? ` (${reason})` : ''}`);
+
+    try {
+      await audio.play();
+      return true;
+    } catch (error) {
+      const message = error?.message || String(error);
+      console.error(`[Audio] Failed to play ${this.getFileName(id)}: ${message}`);
+      return false;
+    }
+  }
+
+  createAudioElement(id, asset) {
+    const audio = new Audio();
+    audio.preload = 'auto';
+    audio.loop = asset.loop;
+    audio.volume = asset.kind === 'music'
+      ? (this.settings.musicVolume / 100) * asset.volumeScale
+      : (this.settings.soundVolume / 100) * asset.volumeScale;
+    audio.src = encodeURI(asset.src);
+
+    console.info(`[Audio] Loading ${this.getFileName(id)}...`);
+
+    audio.addEventListener('canplaythrough', () => {
+      console.info(`[Audio] Loaded successfully: ${this.getFileName(id)}`);
+    }, { once: true });
+
+    audio.addEventListener('loadeddata', () => {
+      console.info(`[Audio] Loaded successfully: ${this.getFileName(id)}`);
+    }, { once: true });
+
+    audio.addEventListener('play', () => {
+      console.info(`[Audio] Playing ${this.getFileName(id)}`);
+    });
+
+    audio.addEventListener('pause', () => {
+      if (!audio.ended) {
+        console.info(`[Audio] Stopping ${this.getFileName(id)}`);
+      }
+    });
+
+    audio.addEventListener('error', () => {
+      console.error(`[Audio] Failed to load ${this.getFileName(id)}: ${this.describeMediaError(audio.error)}`);
+    });
+
+    audio.addEventListener('ended', () => {
+      if (id === 'gameStart' && this.currentBgmId === 'gameStart') {
+        this.playBGM('gameplay', false);
+      }
+    });
+
+    audio.load();
+    return audio;
+  }
+
+  async resumeAudioContext(reason) {
+    if (!this.audioContext && (window.AudioContext || window.webkitAudioContext)) {
+      const Context = window.AudioContext || window.webkitAudioContext;
+      this.audioContext = new Context();
+    }
+
+    if (!this.audioContext || this.audioContext.state !== 'suspended') return;
+
+    console.info(`[Audio] Resuming AudioContext (${reason})`);
+    try {
+      await this.audioContext.resume();
+      console.info('[Audio] AudioContext resumed');
+    } catch (error) {
+      console.error(`[Audio] Failed to resume AudioContext: ${error?.message || String(error)}`);
+    }
+  }
+
+  isLobbyTrack(trackId) {
+    return this.trackOrder.includes(trackId);
+  }
+
+  getFileName(id) {
+    return this.assets[id]?.src.split('/').pop() || id;
+  }
+
+  getFileNameByAudio(audio) {
+    const entry = [...this.audioElements.entries()].find(([, element]) => element === audio);
+    return entry ? this.getFileName(entry[0]) : 'unknown audio';
+  }
+
+  describeMediaError(error) {
+    if (!error) return 'unknown media error';
+    const codeMap = {
+      1: 'MEDIA_ERR_ABORTED',
+      2: 'MEDIA_ERR_NETWORK',
+      3: 'MEDIA_ERR_DECODE',
+      4: 'MEDIA_ERR_SRC_NOT_SUPPORTED',
+    };
+    return `${codeMap[error.code] || 'MEDIA_ERR_UNKNOWN'}${error.message ? ` - ${error.message}` : ''}`;
   }
 }

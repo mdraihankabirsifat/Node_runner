@@ -944,6 +944,36 @@ select:focus-visible {
   pointer-events: none;
 }
 
+.pause-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 8, 16, 0.66);
+  backdrop-filter: blur(10px);
+}
+
+.pause-card {
+  width: min(360px, 100%);
+  padding: 26px 24px 24px;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.pause-card h2 {
+  margin: 10px 0 8px;
+  font-size: clamp(26px, 4vw, 42px);
+  letter-spacing: -0.05em;
+}
+
+.pause-card p:not(.small-label) {
+  margin: 0;
+  color: #b3c3d5;
+  font-size: 14px;
+}
+
 .gameover-overlay {
   position: fixed;
   z-index: 25;

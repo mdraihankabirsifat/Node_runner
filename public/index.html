@@ -18,7 +18,7 @@
       <section id="menu-screen" class="screen menu-screen active">
         <header class="topbar">
           <div class="topbar-actions">
-            <button id="how-button" class="nav-button">PLAY</button>
+            <button id="how-button" class="nav-button">MENU</button>
             <button id="settings-button" class="nav-button">SETTINGS</button>
           </div>
         </header>
@@ -235,12 +235,20 @@
             <div id="canvas-wrap" class="canvas-wrap">
               <canvas id="game-canvas" width="1280" height="720"></canvas>
               <div id="center-message" class="center-message hidden"></div>
+              <div id="pause-overlay" class="pause-overlay hidden" aria-live="polite" aria-atomic="true">
+                <div class="pause-card glass-card">
+                  <p class="small-label">PAUSED</p>
+                  <h2>Game frozen</h2>
+                  <p>Press Q to resume</p>
+                </div>
+              </div>
               <div id="gameover-overlay" class="gameover-overlay hidden">
                 <p class="small-label">MATCH COMPLETE</p>
                 <h2 id="winner-title">Winner</h2>
                 <p id="winner-subtitle"></p>
                 <div id="final-stats" class="final-stats"></div>
                 <p class="efficiency-note">Efficiency is the percentage of total active match time survived.</p>
+                <button id="gameover-home-button" class="primary-button">Back to home</button>
                 <button id="restart-button" class="primary-button hidden">Play again</button>
                 <p id="restart-wait" class="wait-message hidden">Waiting for the host…</p>
               </div>
@@ -363,6 +371,6 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="/js/main.js?v=20260720-settings-progress"></script>
+    <script type="module" src="/js/main.js?v=20260720-intro-update"></script>
   </body>
 </html>

@@ -1,8 +1,8 @@
 import { InputController } from './InputController.js?v=20260720-manual-start';
 import { Renderer } from './Renderer.js?v=20260720-manual-start';
-import { UI } from './UI.js?v=20260720-settings-progress';
-import { AudioManager } from './AudioManager.js?v=20260720-settings-progress';
-import { PlayerPreferences } from './PlayerPreferences.js?v=20260720-settings-progress';
+import { UI } from './UI.js?v=20260720-intro-update';
+import { AudioManager } from './AudioManager.js?v=20260720-intro-update';
+import { PlayerPreferences } from './PlayerPreferences.js?v=20260720-intro-update';
 
 export class GameClient {
   constructor() {
@@ -18,11 +18,13 @@ export class GameClient {
     this.inputSequence = 0;
     this.lastInputSentAt = 0;
     this.lastFrameAt = performance.now();
+    this.isPaused = false;
     this.preferences = new PlayerPreferences();
     this.audio = new AudioManager(this.preferences.getSettings());
 
     this.input = new InputController();
     this.renderer = new Renderer(document.querySelector('#game-canvas'));
+    this.pauseOverlay = document.querySelector('#pause-overlay');
     this.ui = new UI({
       playBots: (setup) => this.playBots(setup),
       hostGame: (setup) => this.hostGame(setup),
@@ -33,6 +35,8 @@ export class GameClient {
       leaveRoom: () => this.leaveRoom(),
       saveAudioSettings: (settings) => this.saveAudioSettings(settings),
       resetProgress: () => this.resetProgress(),
+      playSettingsMusic: () => this.audio.playSettingsMusic(),
+      stopSettingsMusic: () => this.audio.stopSettingsMusic(),
     }, {
       audioSettings: this.preferences.getSettings(),
       profile: this.preferences.getProfile(),
@@ -41,6 +45,13 @@ export class GameClient {
     const unlockAudio = () => this.audio.unlock().catch(() => {});
     document.addEventListener('pointerdown', unlockAudio, { once: true });
     document.addEventListener('keydown', unlockAudio, { once: true });
+    document.addEventListener('keydown', (event) => {
+      if (event.repeat || event.code !== 'KeyQ') return;
+      if (!this.isGameScreenActive()) return;
+      if (!this.latestSnapshot || this.latestSnapshot.status === 'gameover') return;
+      event.preventDefault();
+      this.togglePause();
+    });
     document.addEventListener('click', (event) => {
       if (event.target instanceof Element && event.target.closest('button')) {
         this.audio.playEffect('click');
@@ -48,6 +59,7 @@ export class GameClient {
     });
 
     this.bindSocketEvents();
+    this.audio.playBGM('introSequence');
     requestAnimationFrame((time) => this.frame(time));
   }
 
@@ -76,12 +88,21 @@ export class GameClient {
         this.input.setEnabled(false);
         return;
       }
+
       const firstGameSnapshot = !this.latestSnapshot || this.latestSnapshot.code !== snapshot.code;
       this.latestSnapshot = snapshot;
       this.roomCode = snapshot.code;
+      if (snapshot.status === 'gameover') {
+        this.setPaused(false, { silent: true });
+      }
       if (firstGameSnapshot || !document.querySelector('#game-screen').classList.contains('active')) {
         this.ui.enterGame(snapshot, this.localId);
+        this.audio.playBGM('gameStart');
       }
+      if (this.isPaused && snapshot.status !== 'gameover') {
+        return;
+      }
+
       this.input.setEnabled(snapshot.status === 'playing');
       this.renderer.setSnapshot(snapshot, this.localId);
       this.ui.updateGame(snapshot, this.localId);
@@ -213,31 +234,92 @@ export class GameClient {
   }
 
   async leaveRoom() {
+    this.setPaused(false, { silent: true });
     this.input.setEnabled(false);
     await this.emitWithAck('room:leave', {}, 1800);
     this.roomCode = null;
     this.latestSnapshot = null;
     this.renderer.clear();
+    this.audio.playBGM('lobby');
     this.ui.resetToMenu();
   }
 
   sendInput(now) {
-    if (!this.latestSnapshot || this.latestSnapshot.status !== 'playing') return;
+    if (this.isPaused) {
+      this.audio.stopMovement();
+      return;
+    }
+
+    if (!this.latestSnapshot || this.latestSnapshot.status !== 'playing') {
+      this.audio.stopMovement();
+      return;
+    }
+    
+    const inputState = this.input.getState();
+    const isMoving = inputState.up || inputState.down || inputState.left || inputState.right;
+    if (isMoving) {
+      this.audio.startMovement();
+    } else {
+      this.audio.stopMovement();
+    }
+
     if (now - this.lastInputSentAt < 1000 / 30) return;
     this.lastInputSentAt = now;
     this.inputSequence += 1;
     this.socket.emit('game:input', {
       seq: this.inputSequence,
-      ...this.input.getState(),
+      ...inputState,
     });
   }
 
   frame(now) {
     const dt = Math.min(0.05, Math.max(0, (now - this.lastFrameAt) / 1000));
     this.lastFrameAt = now;
+    if (this.isPaused) {
+      requestAnimationFrame((time) => this.frame(time));
+      return;
+    }
     const inputState = this.input.getState();
     this.sendInput(now);
     this.renderer.update(dt, inputState);
     requestAnimationFrame((time) => this.frame(time));
+  }
+
+  isGameScreenActive() {
+    return document.querySelector('#game-screen').classList.contains('active');
+  }
+
+  togglePause() {
+    this.setPaused(!this.isPaused);
+  }
+
+  setPaused(paused, { silent = false } = {}) {
+    if (this.isPaused === paused) {
+      if (!paused && !silent && this.latestSnapshot) {
+        this.refreshGameView();
+      }
+      return;
+    }
+
+    this.isPaused = paused;
+    if (this.pauseOverlay) {
+      this.pauseOverlay.classList.toggle('hidden', !paused);
+    }
+
+    this.input.setEnabled(!paused && this.latestSnapshot?.status === 'playing');
+    if (paused) {
+      this.audio.stopMovement();
+    } else if (!silent) {
+      this.refreshGameView();
+    } else if (this.latestSnapshot?.status === 'gameover') {
+      this.refreshGameView();
+    }
+  }
+
+  refreshGameView() {
+    if (!this.latestSnapshot) return;
+    this.renderer.setSnapshot(this.latestSnapshot, this.localId);
+    this.ui.updateGame(this.latestSnapshot, this.localId);
+    if (this.latestSnapshot.status === 'gameover') this.recordMatch(this.latestSnapshot);
   }
 }

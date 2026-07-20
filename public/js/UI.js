@@ -139,6 +139,7 @@ export class UI {
       winnerTitle: document.querySelector('#winner-title'),
       winnerSubtitle: document.querySelector('#winner-subtitle'),
       finalStats: document.querySelector('#final-stats'),
+      gameoverHomeButton: document.querySelector('#gameover-home-button'),
       restartButton: document.querySelector('#restart-button'),
       restartWait: document.querySelector('#restart-wait'),
       toast: document.querySelector('#toast'),
@@ -213,13 +214,20 @@ export class UI {
       this.renderAudioSettings(this.audioSettings);
       this.renderProfile(this.profile);
       this.elements.settingsModal.classList.remove('hidden');
+      this.actions.playSettingsMusic?.();
     });
+
+    const closeSettings = () => {
+      this.elements.settingsModal.classList.add('hidden');
+      this.actions.stopSettingsMusic?.();
+    };
+
     this.elements.settingsCloseButton.addEventListener(
       'click',
-      () => this.elements.settingsModal.classList.add('hidden'),
+      closeSettings,
     );
     this.elements.settingsModal.addEventListener('click', (event) => {
-      if (event.target === this.elements.settingsModal) this.elements.settingsModal.classList.add('hidden');
+      if (event.target === this.elements.settingsModal) closeSettings();
     });
 
     const saveAudioSettings = () => {
@@ -242,7 +250,9 @@ export class UI {
     });
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
-      this.elements.settingsModal.classList.add('hidden');
+      if (!this.elements.settingsModal.classList.contains('hidden')) {
+        closeSettings();
+      }
       this.elements.howModal.classList.add('hidden');
     });
 
@@ -268,6 +278,7 @@ export class UI {
       }
     });
     this.elements.gameLeaveButton.addEventListener('click', () => this.actions.leaveRoom());
+    this.elements.gameoverHomeButton.addEventListener('click', () => this.actions.leaveRoom());
     this.elements.copyCodeButton.addEventListener('click', async () => {
       const code = this.currentRoom?.code;
       if (!code) return;

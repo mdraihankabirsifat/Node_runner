@@ -34,6 +34,13 @@ app.use('/characters', express.static(path.join(__dirname, 'charcters'), {
     response.setHeader('Cache-Control', 'public, max-age=86400');
   },
 }));
+app.use('/music', express.static(path.join(__dirname, 'Asset/music'), {
+  etag: false,
+  lastModified: false,
+  setHeaders(response) {
+    response.setHeader('Cache-Control', 'public, max-age=86400');
+  },
+}));
 app.get('/health', (_request, response) => {
   response.status(200).json({
     status: 'ok',
