@@ -1,0 +1,7 @@
+{
+  "name": "node-runner-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Secure online-only desktop wrapper for Node Runner.",
+  "main": "main.cjs"
+}

@@ -190,16 +190,24 @@ For manual Web Service creation instead of a Blueprint, use the same values and 
 ### Playable URL
 
 ```text
-https://YOUR-RENDER-SERVICE-NAME.onrender.com
+https://node-runner-xayv.onrender.com
 ```
 
-Replace the placeholder after Render assigns the final service URL. Every player must open the same deployed URL for room codes and multiplayer synchronization to work.
+Every player must open the same deployed URL for room codes and multiplayer synchronization to work.
 
 ### In-memory Game Jam state
 
 Rooms, players, matches, and bots intentionally remain in server memory. No database is required. This keeps the Game Jam deployment simple, but active rooms are lost whenever Render restarts, redeploys, spins down, or replaces the service instance. Keep the service at one instance unless a shared Socket.IO adapter and shared room store are added later.
 
 This prototype does not include accounts, persistent matchmaking, saved rooms, anti-cheat, or reconnect-to-running-match support.
+
+## Windows and itch.io release
+
+The Windows build is a secure, online-only Electron wrapper around the shared Render deployment. It does not start or bundle another multiplayer server. Build and submission instructions are available in:
+
+- [Windows build guide](docs/WINDOWS_BUILD.md)
+- [itch.io submission guide](docs/ITCH_SUBMISSION.md)
+- [release checklist](docs/RELEASE_CHECKLIST.md)
 
 ## Project structure
 

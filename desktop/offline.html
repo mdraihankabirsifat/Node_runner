@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Node Runner - Connecting</title>
+    <link rel="stylesheet" href="./offline.css" />
+    <script src="./offline.js" defer></script>
+  </head>
+  <body>
+    <main class="offline-card" aria-labelledby="offline-title">
+      <div class="signal" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="eyebrow">ONLINE MULTIPLAYER</p>
+      <h1 id="offline-title">NODE <span>RUNNER</span></h1>
+      <h2>Connecting to the game server&hellip;</h2>
+      <p class="explanation">
+        Node Runner requires an internet connection because rooms and authoritative matches
+        run on the shared game server. Render may need a moment to start.
+      </p>
+      <div class="server-line">
+        <span>SERVER</span>
+        <strong id="server-hostname">Checking configuration&hellip;</strong>
+      </div>
+      <p id="offline-error" class="error-message" hidden></p>
+      <div class="actions">
+        <button id="retry-button" class="primary" type="button">Retry</button>
+        <button id="browser-button" class="secondary" type="button">Open in browser</button>
+      </div>
+      <p class="hint">Retry once your connection is available. The app will not reload continuously.</p>
+    </main>
+  </body>
+</html>
