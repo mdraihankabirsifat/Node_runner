@@ -1318,6 +1318,102 @@ kbd {
   }
 }
 
+/* Keep every match-setup action inside shorter desktop/laptop viewports. */
+@media (max-height: 1000px) {
+  .menu-screen .topbar {
+    min-height: 60px;
+  }
+
+  .menu-layout {
+    height: calc(100dvh - 60px);
+    padding: 10px 0;
+  }
+
+  .hero-copy {
+    padding-bottom: 0;
+  }
+
+  .hero-copy h1 {
+    margin: 14px 0 16px;
+    font-size: clamp(54px, 6.3vw, 88px);
+  }
+
+  .hero-copy > p {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .rule-chips {
+    margin-top: 18px;
+  }
+
+  .rule-chips span {
+    padding: 8px 11px;
+  }
+
+  .control-card {
+    padding: 20px 24px;
+  }
+
+  .card-title-row h2 {
+    font-size: 24px;
+  }
+
+  .control-card .field-label {
+    margin: 12px 0 6px;
+  }
+
+  .control-card .text-input {
+    height: 42px;
+  }
+
+  .menu-character-picker {
+    margin-top: 5px;
+  }
+
+  .menu-character-picker .character-option {
+    height: 52px;
+  }
+
+  .menu-character-picker .character-option img {
+    width: 48px;
+    height: 48px;
+  }
+
+  .control-card .arena-tabs,
+  .control-card .mode-tabs,
+  .control-card .stepper {
+    height: 40px;
+  }
+
+  .control-card .large-button {
+    min-height: 54px;
+    margin-top: 14px;
+  }
+
+  .control-card .split-actions {
+    margin-top: 10px;
+  }
+
+  .control-card .secondary-button {
+    min-height: 62px;
+    padding: 10px 12px;
+  }
+
+  .control-card .secondary-button > span {
+    margin-bottom: 4px;
+  }
+
+  .control-card .join-panel {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+
+  .control-card .error-message {
+    margin-top: 9px;
+    padding: 7px 10px;
+  }
+}
 @media (max-width: 820px) {
   .menu-layout,
   .lobby-layout {
