@@ -84,6 +84,10 @@ test('the initial exposure timer limit is 30 seconds', () => {
   assert.equal(BALANCE.maxTimer, 30);
 });
 
+test('elimination transition stays on screen for the six second cue', () => {
+  assert.equal(BALANCE.transitionSeconds, 6);
+});
+
 test('each match restart receives a stable, unique match id for saved records', () => {
   const { room, socket } = createRoom(3);
   const firstMatchId = room.snapshot().matchId;
@@ -183,6 +187,29 @@ test('a node accepts only one player and blocks another runner', () => {
   room.blockOccupiedNodes();
   const distance = Math.hypot(second.x - node.x, second.y - node.y);
   assert.ok(distance >= node.radius + second.radius - 5 - 0.001);
+});
+
+test('blocked collision velocity matches the final corrected position', () => {
+  const { room } = createRoom(4);
+  const [runner, blocker] = [...room.players.values()];
+  const dt = 1 / BALANCE.tickRate;
+
+  runner.x = 500;
+  runner.y = 360;
+  runner.input = { up: false, down: false, left: false, right: true };
+  blocker.x = runner.x + runner.radius + blocker.radius;
+  blocker.y = runner.y;
+  blocker.input = { up: false, down: false, left: false, right: false };
+  blocker.occupiedNodeId = 'locked-node';
+
+  const movementStart = room.beginMovementFrame();
+  room.movePlayers(dt, false);
+  room.resolvePlayerCollisions();
+  room.finalizeMovementFrame(movementStart, dt);
+
+  assert.ok(Math.abs(runner.x - movementStart.get(runner.id).x) < 0.001);
+  assert.equal(room.serializePlayer(runner).vx, 0);
+  assert.equal(room.serializePlayer(runner).vy, 0);
 });
 
 test('a fresh node restores health and pauses the timer', () => {
@@ -294,6 +321,26 @@ test('shrinking resets survivor timers and lowers the next limit by five seconds
     if (player.alive) assert.equal(player.timer, 0);
   }
   assert.equal(room.snapshot().maxTimer, 25);
+});
+
+test('the next round countdown starts when the elimination page ends', () => {
+  const { room } = createRoom(4);
+  const eliminated = room.players.get('host');
+  eliminated.health = 0;
+
+  room.evaluateEliminations();
+  assert.equal(room.status, 'transition');
+  assert.ok(room.stateEndsAt);
+
+  room.tick(1 / BALANCE.tickRate, room.stateEndsAt);
+
+  assert.equal(room.status, 'countdown');
+  assert.ok(room.stateEndsAt);
+
+  room.tick(1 / BALANCE.tickRate, room.stateEndsAt);
+
+  assert.equal(room.status, 'playing');
+  assert.equal(room.stateEndsAt, null);
 });
 
 test('distance, playing time, and efficiency are serialized for every player', () => {

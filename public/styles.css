@@ -928,6 +928,7 @@ select:focus-visible {
 
 .center-message {
   position: absolute;
+  z-index: 18;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -942,6 +943,21 @@ select:focus-visible {
   letter-spacing: -0.04em;
   text-align: center;
   pointer-events: none;
+}
+
+.center-message.elimination-message {
+  width: min(780px, calc(100% - 42px));
+  min-height: 190px;
+  display: grid;
+  place-items: center;
+  padding: 34px;
+  background: rgba(5, 13, 25, 0.42);
+  border-color: rgba(255, 107, 135, 0.34);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(4px);
+  font-size: clamp(36px, 6vw, 76px);
+  line-height: 0.92;
+  text-shadow: 0 12px 34px rgba(0, 0, 0, 0.42);
 }
 
 .pause-overlay {

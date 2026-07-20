@@ -12,6 +12,10 @@ const DIRECTIONS = Object.freeze(['up', 'down', 'left', 'right']);
 const RUN_FRAME_COUNT = 8;
 const SPRITE_SIZE = 84;
 const SPRITE_TOP_OFFSET = 68;
+const MAX_LOCAL_PREDICTION_LEAD = 26;
+const LOCAL_MOVEMENT_EPSILON = 3;
+const ELIMINATION_RUN_DURATION = 6;
+const ELIMINATION_EXIT_PADDING = 140;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -47,6 +51,7 @@ export class Renderer {
     this.snapshot = null;
     this.localId = null;
     this.entities = new Map();
+    this.eliminationRuns = new Map();
     this.characterSprites = new Map();
     this.time = 0;
     this.preloadCharacterSprites();
@@ -107,7 +112,63 @@ export class Renderer {
   clear() {
     this.snapshot = null;
     this.entities.clear();
+    this.eliminationRuns.clear();
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  playEliminationRun(event = {}) {
+    const player = this.snapshot?.players.find((item) => item.id === event.playerId);
+    const entity = this.entities.get(event.playerId);
+    if (!player || !entity) return;
+
+    let directionX = entity.renderX - 640;
+    let directionY = entity.renderY - 360;
+    let magnitude = Math.hypot(directionX, directionY);
+    if (magnitude < 1) {
+      directionX = entity.renderX < 640 ? -1 : 1;
+      directionY = 0;
+      magnitude = 1;
+    }
+    const normalizedX = directionX / magnitude;
+    const normalizedY = directionY / magnitude;
+    const exitDistance = this.getExitDistance(
+      entity.renderX,
+      entity.renderY,
+      normalizedX,
+      normalizedY,
+    );
+
+    this.eliminationRuns.set(player.id, {
+      player: { ...player, alive: true },
+      entity: {
+        renderX: entity.renderX,
+        renderY: entity.renderY,
+        facing: this.directionToFacing(normalizedX, normalizedY),
+        moving: true,
+        animationOffset: entity.animationOffset,
+      },
+      startX: entity.renderX,
+      startY: entity.renderY,
+      endX: entity.renderX + normalizedX * exitDistance,
+      endY: entity.renderY + normalizedY * exitDistance,
+      startedAt: this.time,
+      duration: ELIMINATION_RUN_DURATION,
+    });
+  }
+
+  getExitDistance(x, y, directionX, directionY) {
+    const bounds = {
+      left: -ELIMINATION_EXIT_PADDING,
+      right: 1280 + ELIMINATION_EXIT_PADDING,
+      top: -ELIMINATION_EXIT_PADDING,
+      bottom: 720 + ELIMINATION_EXIT_PADDING,
+    };
+    const candidates = [];
+    if (directionX > 0) candidates.push((bounds.right - x) / directionX);
+    if (directionX < 0) candidates.push((bounds.left - x) / directionX);
+    if (directionY > 0) candidates.push((bounds.bottom - y) / directionY);
+    if (directionY < 0) candidates.push((bounds.top - y) / directionY);
+    return Math.max(1, Math.min(...candidates.filter((value) => value > 0)));
   }
 
   update(dt, input) {
@@ -118,7 +179,19 @@ export class Renderer {
     }
 
     this.updateEntityPositions(dt, input);
+    this.updateEliminationRuns();
     this.drawScene();
+  }
+
+  updateEliminationRuns() {
+    for (const [id, run] of this.eliminationRuns) {
+      const progress = clamp((this.time - run.startedAt) / run.duration, 0, 1);
+      const eased = progress * progress * (3 - 2 * progress);
+      run.entity.renderX = run.startX + (run.endX - run.startX) * eased;
+      run.entity.renderY = run.startY + (run.endY - run.startY) * eased;
+      run.entity.moving = true;
+      if (progress >= 1) this.eliminationRuns.delete(id);
+    }
   }
 
   updateEntityPositions(dt, input) {
@@ -127,6 +200,8 @@ export class Renderer {
       if (!entity) continue;
 
       if (player.id === this.localId && player.alive && this.snapshot.status === 'playing') {
+        const previousX = entity.renderX;
+        const previousY = entity.renderY;
         const horizontal = Number(input.right) - Number(input.left);
         const vertical = Number(input.down) - Number(input.up);
         const magnitude = Math.hypot(horizontal, vertical);
@@ -138,6 +213,23 @@ export class Renderer {
         const correction = 1 - Math.exp(-3.5 * dt);
         entity.renderX += (entity.targetX - entity.renderX) * correction;
         entity.renderY += (entity.targetY - entity.renderY) * correction;
+
+        const leadX = entity.renderX - entity.targetX;
+        const leadY = entity.renderY - entity.targetY;
+        const lead = Math.hypot(leadX, leadY);
+        if (lead > MAX_LOCAL_PREDICTION_LEAD) {
+          entity.renderX = entity.targetX + (leadX / lead) * MAX_LOCAL_PREDICTION_LEAD;
+          entity.renderY = entity.targetY + (leadY / lead) * MAX_LOCAL_PREDICTION_LEAD;
+        }
+
+        const visibleDistance = Math.hypot(
+          entity.renderX - previousX,
+          entity.renderY - previousY,
+        );
+        const serverSpeed = Math.hypot(player.vx, player.vy);
+        entity.moving = magnitude > 0
+          && (visibleDistance / Math.max(dt, 0.001) > LOCAL_MOVEMENT_EPSILON
+            || serverSpeed > LOCAL_MOVEMENT_EPSILON);
       } else {
         this.updateEntityFacing(entity, player.vx, player.vy);
         const interpolation = 1 - Math.exp(-13 * dt);
@@ -151,11 +243,14 @@ export class Renderer {
     const magnitude = Math.hypot(horizontal, vertical);
     entity.moving = magnitude > 5 || (magnitude > 0 && magnitude <= Math.SQRT2);
     if (!entity.moving) return;
+    entity.facing = this.directionToFacing(horizontal, vertical);
+  }
+
+  directionToFacing(horizontal, vertical) {
     if (Math.abs(horizontal) > Math.abs(vertical)) {
-      entity.facing = horizontal < 0 ? 'left' : 'right';
-    } else {
-      entity.facing = vertical < 0 ? 'up' : 'down';
+      return horizontal < 0 ? 'left' : 'right';
     }
+    return vertical < 0 ? 'up' : 'down';
   }
 
   drawIdle() {
@@ -377,6 +472,10 @@ export class Renderer {
       const entity = this.entities.get(player.id);
       if (!entity) continue;
       this.drawPlayerBody(player, entity);
+    }
+
+    for (const run of this.eliminationRuns.values()) {
+      this.drawPlayerBody(run.player, run.entity);
     }
 
     for (const player of alivePlayers) {

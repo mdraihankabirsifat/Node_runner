@@ -50,6 +50,9 @@ export class UI {
     this.localId = null;
     this.currentRoom = null;
     this.toastTimer = null;
+    this.eliminationMessage = null;
+    this.eliminationMessageTimer = null;
+    this.latestGameSnapshot = null;
     this.eventItems = [];
 
     this.screens = {
@@ -214,7 +217,6 @@ export class UI {
       this.renderAudioSettings(this.audioSettings);
       this.renderProfile(this.profile);
       this.elements.settingsModal.classList.remove('hidden');
-      this.actions.playSettingsMusic?.();
     });
 
     const closeSettings = () => {
@@ -230,19 +232,21 @@ export class UI {
       if (event.target === this.elements.settingsModal) closeSettings();
     });
 
-    const saveAudioSettings = () => {
+    const saveAudioSettings = (preview = null) => {
       const saved = this.actions.saveAudioSettings({
         musicEnabled: this.elements.musicEnabled.checked,
         musicVolume: Number(this.elements.musicVolume.value),
         soundEnabled: this.elements.soundEnabled.checked,
         soundVolume: Number(this.elements.soundVolume.value),
-      });
+      }, preview);
       this.renderAudioSettings(saved);
+      if (preview === 'music') this.actions.previewMusicSetting?.();
+      if (preview === 'sound') this.actions.previewSoundSetting?.();
     };
-    this.elements.musicEnabled.addEventListener('change', saveAudioSettings);
-    this.elements.musicVolume.addEventListener('input', saveAudioSettings);
-    this.elements.soundEnabled.addEventListener('change', saveAudioSettings);
-    this.elements.soundVolume.addEventListener('input', saveAudioSettings);
+    this.elements.musicEnabled.addEventListener('change', () => saveAudioSettings());
+    this.elements.musicVolume.addEventListener('input', () => saveAudioSettings('music'));
+    this.elements.soundEnabled.addEventListener('change', () => saveAudioSettings());
+    this.elements.soundVolume.addEventListener('input', () => saveAudioSettings('sound'));
     this.elements.resetProgressButton.addEventListener('click', () => {
       if (!window.confirm('Reset all locally saved match records and achievements?')) return;
       this.renderProfile(this.actions.resetProgress());
@@ -598,6 +602,8 @@ export class UI {
   enterGame(snapshot, localId) {
     this.localId = localId;
     this.currentRoom = { ...(this.currentRoom ?? {}), code: snapshot.code, hostId: snapshot.hostId };
+    this.latestGameSnapshot = snapshot;
+    this.clearEliminationMessage();
     this.showScreen('game');
     this.elements.gameRoomCode.textContent = snapshot.code;
     this.elements.gameoverOverlay.classList.add('hidden');
@@ -607,6 +613,7 @@ export class UI {
 
   updateGame(snapshot, localId = this.localId) {
     this.localId = localId;
+    this.latestGameSnapshot = snapshot;
     this.currentRoom = { ...(this.currentRoom ?? {}), code: snapshot.code, hostId: snapshot.hostId };
     this.elements.gameRoomCode.textContent = snapshot.code;
     this.elements.roundValue.textContent = String(snapshot.round || 1);
@@ -630,8 +637,11 @@ export class UI {
   updateCenterMessage(snapshot) {
     const element = this.elements.centerMessage;
     let message = '';
+    const eliminationActive = this.eliminationMessage && Date.now() < this.eliminationMessage.expiresAt;
 
-    if (snapshot.status === 'countdown' && snapshot.stateEndsAt) {
+    if (eliminationActive) {
+      message = this.eliminationMessage.message;
+    } else if (snapshot.status === 'countdown' && snapshot.stateEndsAt) {
       const seconds = Math.max(0, Math.ceil((snapshot.stateEndsAt - Date.now()) / 1000));
       message = seconds > 0 ? String(seconds) : 'GO!';
     } else if (snapshot.status === 'transition') {
@@ -639,7 +649,27 @@ export class UI {
     }
 
     element.textContent = message;
+    element.classList.toggle('elimination-message', Boolean(eliminationActive));
     element.classList.toggle('hidden', !message);
+  }
+
+  showEliminationMessage(message) {
+    clearTimeout(this.eliminationMessageTimer);
+    this.eliminationMessage = {
+      message,
+      expiresAt: Date.now() + 6000,
+    };
+    if (this.latestGameSnapshot) this.updateCenterMessage(this.latestGameSnapshot);
+    this.eliminationMessageTimer = setTimeout(() => {
+      this.eliminationMessage = null;
+      if (this.latestGameSnapshot) this.updateCenterMessage(this.latestGameSnapshot);
+    }, 6000);
+  }
+
+  clearEliminationMessage() {
+    clearTimeout(this.eliminationMessageTimer);
+    this.eliminationMessage = null;
+    this.elements.centerMessage.classList.remove('elimination-message');
   }
 
   updateGameOver(snapshot) {
@@ -739,6 +769,8 @@ export class UI {
 
   resetToMenu() {
     this.currentRoom = null;
+    this.latestGameSnapshot = null;
+    this.clearEliminationMessage();
     this.eventItems = [];
     this.setBusy(false);
     this.showMenuError('');

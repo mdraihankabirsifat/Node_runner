@@ -7,6 +7,11 @@ export class AudioManager {
     this.currentLobbyIndex = 0;
     this.specialCueDepth = 0;
     this.interruptedBgmId = null;
+    this.eliminationCueUntil = 0;
+    this.settingsPreviewTrackId = null;
+    this.settingsPreviewPreviousBgmId = null;
+    this.settingsPreviewPreviousWasPlaying = false;
+    this.settingsSoundPreviewTimer = null;
 
     this.trackOrder = ['lobby1', 'lobby2', 'lobby3'];
 
@@ -54,12 +59,13 @@ export class AudioManager {
     }
   }
 
-  applySettings(settings) {
+  applySettings(settings, options = {}) {
+    const { resumeMusic = true } = options;
     this.settings = { ...settings };
     this.updateVolumes();
 
     if (this.settings.musicEnabled && this.settings.musicVolume > 0) {
-      if (this.currentBgmId) {
+      if (resumeMusic && this.currentBgmId) {
         this.playCurrentBgm('settings changed').catch(() => {});
       }
     } else {
@@ -188,11 +194,58 @@ export class AudioManager {
   }
 
   playSettingsMusic() {
+    if (this.settingsPreviewTrackId) return;
+    const previousAudio = this.currentBgmId ? this.audioElements.get(this.currentBgmId) : null;
+    this.settingsPreviewPreviousBgmId = this.currentBgmId;
+    this.settingsPreviewPreviousWasPlaying = Boolean(previousAudio && !previousAudio.paused);
     this.playBGM('lobby', false);
+    this.settingsPreviewTrackId = this.currentBgmId;
   }
 
   stopSettingsMusic() {
-    this.playBGM('lobby', false);
+    clearTimeout(this.settingsSoundPreviewTimer);
+    this.settingsSoundPreviewTimer = null;
+    this.pauseAudio('nodeReach', 'settings sound preview closed');
+
+    if (!this.settingsPreviewTrackId) return;
+
+    const previewTrackId = this.settingsPreviewTrackId;
+    const previousBgmId = this.settingsPreviewPreviousBgmId;
+    const previousWasPlaying = this.settingsPreviewPreviousWasPlaying;
+
+    this.settingsPreviewTrackId = null;
+    this.settingsPreviewPreviousBgmId = null;
+    this.settingsPreviewPreviousWasPlaying = false;
+
+    if (previewTrackId && previewTrackId !== previousBgmId) {
+      this.pauseAudio(previewTrackId, 'settings preview closed');
+    }
+
+    this.currentBgmId = previousBgmId ?? null;
+    if (!previousBgmId) return;
+
+    if (previousWasPlaying && this.settings.musicEnabled && this.settings.musicVolume > 0 && !document.hidden) {
+      this.playCurrentBgm('settings closed').catch(() => {});
+      return;
+    }
+
+    this.pauseAudio(previousBgmId, 'settings closed');
+  }
+
+  playSettingsSound() {
+    if (!this.settings.soundEnabled || this.settings.soundVolume <= 0) return;
+
+    clearTimeout(this.settingsSoundPreviewTimer);
+    const audio = this.audioElements.get('nodeReach');
+    if (!audio) return;
+
+    audio.currentTime = 0;
+    this.updateVolumes();
+    this.playAudioElement('nodeReach', 'settings sound preview').catch(() => {});
+    this.settingsSoundPreviewTimer = setTimeout(() => {
+      this.pauseAudio('nodeReach', 'settings sound preview complete');
+      audio.currentTime = 0;
+    }, 900);
   }
 
   startMovement() {
@@ -221,6 +274,7 @@ export class AudioManager {
       this.playNodeReach();
     }
     if (type === 'ARENA_SHRINK') {
+      if (Date.now() < this.eliminationCueUntil) return;
       this.playRoundEndCue();
       return;
     }
@@ -238,12 +292,14 @@ export class AudioManager {
 
   playEliminationCue() {
     if (!this.settings.soundEnabled || this.settings.soundVolume <= 0) return;
+    this.eliminationCueUntil = Date.now() + 6000;
     this.playInterruptingCue('elimination', 'player eliminated').catch(() => {});
   }
 
   async playInterruptingCue(id, reason) {
     const audio = this.audioElements.get(id);
     if (!audio) return;
+    audio.currentTime = 0;
 
     const bgmAudio = this.currentBgmId ? this.audioElements.get(this.currentBgmId) : null;
     const shouldResumeBgm = Boolean(

@@ -559,7 +559,41 @@ export class GameRoom {
     }
   }
 
-  movePlayers(dt) {
+  beginMovementFrame() {
+    return new Map(
+      [...this.players.values()]
+        .filter((player) => player.alive)
+        .map((player) => [
+          player.id,
+          {
+            x: player.x,
+            y: player.y,
+            distanceCovered: player.distanceCovered,
+          },
+        ]),
+    );
+  }
+
+  finalizeMovementFrame(startPositions, dt) {
+    for (const player of this.players.values()) {
+      const start = startPositions.get(player.id);
+      if (!start) continue;
+
+      if (!player.alive || dt <= 0) {
+        player.vx = 0;
+        player.vy = 0;
+        continue;
+      }
+
+      const dx = player.x - start.x;
+      const dy = player.y - start.y;
+      player.vx = dx / dt;
+      player.vy = dy / dt;
+      player.distanceCovered = start.distanceCovered + Math.hypot(dx, dy);
+    }
+  }
+
+  movePlayers(dt, trackDistance = true) {
     for (const player of this.players.values()) {
       if (!player.alive) continue;
       const previousX = player.x;
@@ -571,10 +605,12 @@ export class GameRoom {
       player.x += player.vx * dt;
       player.y += player.vy * dt;
       clampPlayerToArena(player, this.arena);
-      player.distanceCovered += Math.hypot(
-        player.x - previousX,
-        player.y - previousY,
-      );
+      if (trackDistance) {
+        player.distanceCovered += Math.hypot(
+          player.x - previousX,
+          player.y - previousY,
+        );
+      }
     }
   }
 
@@ -832,7 +868,7 @@ export class GameRoom {
 
   finishTransition() {
     this.positionAlivePlayers();
-    this.beginCountdown(2.4);
+    this.beginCountdown(BALANCE.countdownSeconds);
   }
 
   tick(dt, now) {
@@ -849,11 +885,13 @@ export class GameRoom {
     } else if (this.status === 'playing') {
       this.updatePlayingStats(dt);
       this.updateBots(now);
-      this.movePlayers(dt);
+      const movementStart = this.beginMovementFrame();
+      this.movePlayers(dt, false);
       this.resolvePlayerCollisions();
       this.releaseExitedNodes(now);
       this.blockOccupiedNodes();
       this.blockPlayerLockedNodes(now);
+      this.finalizeMovementFrame(movementStart, dt);
       this.claimFreeNodes(now);
       this.updateZonesAndStats(dt);
       this.evaluateEliminations();

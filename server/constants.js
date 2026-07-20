@@ -30,7 +30,7 @@ export const BALANCE = Object.freeze({
   criticalTimerFraction: 0.8,
 
   countdownSeconds: 3,
-  transitionSeconds: 1.8,
+  transitionSeconds: 6,
   snapshotRate: 20,
   tickRate: 30,
   roomIdleDeleteMs: 15 * 60 * 1000,

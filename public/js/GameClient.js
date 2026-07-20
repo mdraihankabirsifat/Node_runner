@@ -1,7 +1,7 @@
 import { InputController } from './InputController.js?v=20260720-manual-start';
-import { Renderer } from './Renderer.js?v=20260720-manual-start';
-import { UI } from './UI.js?v=20260720-intro-update';
-import { AudioManager } from './AudioManager.js?v=20260720-intro-update';
+import { Renderer } from './Renderer.js?v=20260720-elimination-run';
+import { UI } from './UI.js?v=20260720-volume-preview';
+import { AudioManager } from './AudioManager.js?v=20260720-volume-preview';
 import { PlayerPreferences } from './PlayerPreferences.js?v=20260720-intro-update';
 
 export class GameClient {
@@ -33,10 +33,12 @@ export class GameClient {
       selectCharacter: (characterId) => this.selectCharacter(characterId),
       startGame: (characterId) => this.startGame(characterId),
       leaveRoom: () => this.leaveRoom(),
-      saveAudioSettings: (settings) => this.saveAudioSettings(settings),
+      saveAudioSettings: (settings, preview) => this.saveAudioSettings(settings, preview),
       resetProgress: () => this.resetProgress(),
       playSettingsMusic: () => this.audio.playSettingsMusic(),
       stopSettingsMusic: () => this.audio.stopSettingsMusic(),
+      previewMusicSetting: () => this.audio.playSettingsMusic(),
+      previewSoundSetting: () => this.audio.playSettingsSound(),
     }, {
       audioSettings: this.preferences.getSettings(),
       profile: this.preferences.getProfile(),
@@ -112,13 +114,17 @@ export class GameClient {
     this.socket.on('game:event', (event) => {
       this.ui.addEvent(event);
       this.audio.playEffect(event.type);
-      if (event.type === 'ELIMINATION' || event.type === 'GAME_OVER') this.ui.showToast(event.message);
+      if (event.type === 'ELIMINATION') {
+        this.renderer.playEliminationRun(event);
+        this.ui.showEliminationMessage(event.message);
+      }
+      if (event.type === 'GAME_OVER') this.ui.showToast(event.message);
     });
   }
 
-  saveAudioSettings(settings) {
+  saveAudioSettings(settings, preview = null) {
     const saved = this.preferences.updateSettings(settings);
-    this.audio.applySettings(saved);
+    this.audio.applySettings(saved, { resumeMusic: preview !== 'sound' });
     return saved;
   }
 
