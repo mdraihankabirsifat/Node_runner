@@ -127,7 +127,8 @@ io.on('connection', (socket) => {
       callbackSafe(callback, { ok: false, error: 'You are not in a room.' });
       return;
     }
-    callbackSafe(callback, room.setCharacter(socket.id, payload.characterId));
+    const result = room.setCharacter(socket.id, payload.characterId);
+    callbackSafe(callback, result);
   });
 
   socket.on('room:start', (payload = {}, callback) => {

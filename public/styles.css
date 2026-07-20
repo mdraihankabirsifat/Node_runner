@@ -536,9 +536,9 @@ select:focus-visible {
 
 .lobby-layout {
   width: min(980px, calc(100% - 36px));
-  height: calc(100vh - 72px);
+  min-height: calc(100vh - 72px);
   margin: 0 auto;
-  padding: 24px 0;
+  padding: 24px 0 48px;
   display: grid;
   grid-template-columns: 0.68fr 1.32fr;
   gap: 22px;
@@ -595,10 +595,34 @@ select:focus-visible {
   gap: 9px;
 }
 
+.lobby-screen {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .character-picker-section {
   margin-top: 22px;
   padding-top: 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lobby-start-section {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(118, 246, 163, 0.06);
+  border: 1px solid rgba(118, 246, 163, 0.2);
+}
+
+.lobby-start-section p {
+  margin: 0 0 10px;
+  color: #aeeac2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.lobby-start-section .large-button {
+  margin-top: 0;
 }
 
 .character-picker-heading {

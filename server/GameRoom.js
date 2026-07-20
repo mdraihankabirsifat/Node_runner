@@ -276,14 +276,15 @@ export class GameRoom {
   }
 
   isMixedReadyToStart() {
-    return (
-      this.status === 'lobby'
-      && this.gameMode === 'mix'
+    return this.gameMode === 'mix' && this.isReadyToStart();
+  }
+
+  isReadyToStart() {
+    return this.status === 'lobby'
       && this.humanCount() >= this.humanSlots
       && [...this.players.values()]
         .filter((player) => !player.isBot)
-        .every((player) => Number.isInteger(player.characterId))
-    );
+        .every((player) => Number.isInteger(player.characterId));
   }
 
   start(socketId, preferredCharacterId = null) {

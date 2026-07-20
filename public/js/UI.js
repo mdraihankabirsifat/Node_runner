@@ -100,6 +100,7 @@ export class UI {
       lobbyBotCount: document.querySelector('#lobby-bot-count'),
       lobbyArena: document.querySelector('#lobby-arena'),
       lobbyCompositionNote: document.querySelector('#lobby-composition-note'),
+      lobbyStartSection: document.querySelector('#lobby-start-section'),
       startGameButton: document.querySelector('#start-game-button'),
       lobbyWaitMessage: document.querySelector('#lobby-wait-message'),
       lobbyError: document.querySelector('#lobby-error'),
@@ -415,8 +416,9 @@ export class UI {
     const allHumansSelected = humanPlayers.every(
       (player) => Number.isInteger(player.characterId),
     );
-    this.elements.startGameButton.disabled = humanPlayers.length < humanSlots
-      || !allHumansSelected;
+    const everyoneReady = humanPlayers.length >= humanSlots && allHumansSelected;
+    this.elements.lobbyStartSection.classList.toggle('hidden', !isHost || !everyoneReady);
+    this.elements.startGameButton.disabled = !everyoneReady;
 
     const localPlayer = humanPlayers.find((player) => player.id === localId);
     this.selectedCharacterId = localPlayer?.characterId ?? null;

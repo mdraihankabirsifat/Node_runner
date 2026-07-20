@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#08101f" />
     <title>Node Runner</title>
-    <link rel="stylesheet" href="/styles.css?v=20260720-lobby-stable" />
+    <link rel="stylesheet" href="/styles.css?v=20260720-manual-start" />
   </head>
   <body>
     <div id="app">
@@ -159,6 +159,15 @@
               <div id="character-picker" class="character-picker"></div>
             </div>
 
+            <div id="lobby-start-section" class="lobby-start-section hidden">
+              <p>Everyone joined and selected a character.</p>
+              <button id="start-game-button" class="primary-button large-button">
+                <span class="button-icon">⚡</span>
+                <span><strong>Start match</strong><small>Launch the arena</small></span>
+                <span class="button-arrow">→</span>
+              </button>
+            </div>
+
             <div id="host-settings" class="host-settings hidden">
               <div class="setting-grid compact">
                 <label>
@@ -201,11 +210,6 @@
                 </label>
               </div>
               <p id="lobby-composition-note" class="composition-note"></p>
-              <button id="start-game-button" class="primary-button large-button">
-                <span class="button-icon">⚡</span>
-                <span><strong>Start match</strong><small>Launch the arena</small></span>
-                <span class="button-arrow">→</span>
-              </button>
             </div>
             <p id="lobby-wait-message" class="wait-message">Waiting for the host to start the match…</p>
             <p id="lobby-error" class="error-message hidden"></p>
@@ -285,6 +289,6 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="/js/main.js?v=20260720-lobby-stable"></script>
+    <script type="module" src="/js/main.js?v=20260720-manual-start"></script>
   </body>
 </html>
