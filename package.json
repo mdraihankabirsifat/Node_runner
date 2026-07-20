@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "check": "node --check server.js && node --check server/GameRoom.js && node --check server/arena.js && node --check public/js/main.js && node --check public/js/GameClient.js && node --check public/js/Renderer.js && node --check public/js/UI.js",
+    "check": "node --check server.js && node --check server/GameRoom.js && node --check server/arena.js && node --check public/js/main.js && node --check public/js/GameClient.js && node --check public/js/Renderer.js && node --check public/js/UI.js && node --check public/js/AudioManager.js && node --check public/js/PlayerPreferences.js",
     "test": "node --test tests/*.test.js"
   },
   "engines": {

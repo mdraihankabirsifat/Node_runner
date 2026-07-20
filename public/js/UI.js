@@ -1,3 +1,5 @@
+import { ACHIEVEMENTS } from './PlayerPreferences.js?v=20260720-settings-progress';
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -35,8 +37,10 @@ function characterPreviewUrl(characterId) {
 }
 
 export class UI {
-  constructor(actions) {
+  constructor(actions, options = {}) {
     this.actions = actions;
+    this.audioSettings = options.audioSettings ?? {};
+    this.profile = options.profile ?? {};
     this.playerCount = 6;
     this.gameMode = 'bot';
     this.mixedHumanCount = 2;
@@ -82,6 +86,23 @@ export class UI {
       roomCodeInput: document.querySelector('#room-code-input'),
       joinConfirmButton: document.querySelector('#join-confirm-button'),
       menuError: document.querySelector('#menu-error'),
+      settingsButton: document.querySelector('#settings-button'),
+      settingsModal: document.querySelector('#settings-modal'),
+      settingsCloseButton: document.querySelector('#settings-close-button'),
+      musicEnabled: document.querySelector('#music-enabled'),
+      musicVolume: document.querySelector('#music-volume'),
+      musicVolumeValue: document.querySelector('#music-volume-value'),
+      soundEnabled: document.querySelector('#sound-enabled'),
+      soundVolume: document.querySelector('#sound-volume'),
+      soundVolumeValue: document.querySelector('#sound-volume-value'),
+      profileMatches: document.querySelector('#profile-matches'),
+      profileWins: document.querySelector('#profile-wins'),
+      profileDistance: document.querySelector('#profile-distance'),
+      profileTime: document.querySelector('#profile-time'),
+      profileEfficiency: document.querySelector('#profile-efficiency'),
+      achievementCount: document.querySelector('#achievement-count'),
+      achievementList: document.querySelector('#achievement-list'),
+      resetProgressButton: document.querySelector('#reset-progress-button'),
       howButton: document.querySelector('#how-button'),
       howModal: document.querySelector('#how-modal'),
       howCloseButton: document.querySelector('#how-close-button'),
@@ -125,6 +146,8 @@ export class UI {
 
     this.bindEvents();
     this.renderMenuCharacterPicker();
+    this.renderAudioSettings(this.audioSettings);
+    this.renderProfile(this.profile);
   }
 
   bindEvents() {
@@ -186,6 +209,43 @@ export class UI {
       if (event.target === this.elements.howModal) this.elements.howModal.classList.add('hidden');
     });
 
+    this.elements.settingsButton.addEventListener('click', () => {
+      this.renderAudioSettings(this.audioSettings);
+      this.renderProfile(this.profile);
+      this.elements.settingsModal.classList.remove('hidden');
+    });
+    this.elements.settingsCloseButton.addEventListener(
+      'click',
+      () => this.elements.settingsModal.classList.add('hidden'),
+    );
+    this.elements.settingsModal.addEventListener('click', (event) => {
+      if (event.target === this.elements.settingsModal) this.elements.settingsModal.classList.add('hidden');
+    });
+
+    const saveAudioSettings = () => {
+      const saved = this.actions.saveAudioSettings({
+        musicEnabled: this.elements.musicEnabled.checked,
+        musicVolume: Number(this.elements.musicVolume.value),
+        soundEnabled: this.elements.soundEnabled.checked,
+        soundVolume: Number(this.elements.soundVolume.value),
+      });
+      this.renderAudioSettings(saved);
+    };
+    this.elements.musicEnabled.addEventListener('change', saveAudioSettings);
+    this.elements.musicVolume.addEventListener('input', saveAudioSettings);
+    this.elements.soundEnabled.addEventListener('change', saveAudioSettings);
+    this.elements.soundVolume.addEventListener('input', saveAudioSettings);
+    this.elements.resetProgressButton.addEventListener('click', () => {
+      if (!window.confirm('Reset all locally saved match records and achievements?')) return;
+      this.renderProfile(this.actions.resetProgress());
+      this.showToast('Saved progress reset.');
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      this.elements.settingsModal.classList.add('hidden');
+      this.elements.howModal.classList.add('hidden');
+    });
+
     this.elements.lobbyBackButton.addEventListener('click', () => this.actions.leaveRoom());
     this.elements.characterPicker.addEventListener('click', async (event) => {
       const button = event.target.closest('[data-character-id]');
@@ -231,6 +291,49 @@ export class UI {
       () => this.actions.startGame(this.selectedCharacterId),
     );
     this.elements.restartButton.addEventListener('click', () => this.actions.startGame());
+  }
+
+  renderAudioSettings(settings = {}) {
+    this.audioSettings = { ...this.audioSettings, ...settings };
+    this.elements.musicEnabled.checked = this.audioSettings.musicEnabled !== false;
+    this.elements.musicVolume.value = String(this.audioSettings.musicVolume ?? 25);
+    this.elements.musicVolume.disabled = !this.elements.musicEnabled.checked;
+    this.elements.musicVolumeValue.textContent = `${this.elements.musicVolume.value}%`;
+    this.elements.soundEnabled.checked = this.audioSettings.soundEnabled !== false;
+    this.elements.soundVolume.value = String(this.audioSettings.soundVolume ?? 70);
+    this.elements.soundVolume.disabled = !this.elements.soundEnabled.checked;
+    this.elements.soundVolumeValue.textContent = `${this.elements.soundVolume.value}%`;
+  }
+
+  renderProfile(profile = {}) {
+    this.profile = {
+      matchesPlayed: 0,
+      wins: 0,
+      bestDistance: 0,
+      bestPlayingTime: 0,
+      bestEfficiency: 0,
+      achievements: [],
+      ...profile,
+    };
+    const unlockedIds = new Set(this.profile.achievements);
+    this.elements.profileMatches.textContent = String(this.profile.matchesPlayed);
+    this.elements.profileWins.textContent = String(this.profile.wins);
+    this.elements.profileDistance.textContent = `${Math.round(this.profile.bestDistance)} px`;
+    this.elements.profileTime.textContent = formatPlayingTime(this.profile.bestPlayingTime);
+    this.elements.profileEfficiency.textContent = `${Number(this.profile.bestEfficiency).toFixed(1)}%`;
+    this.elements.achievementCount.textContent = `${unlockedIds.size} / ${ACHIEVEMENTS.length}`;
+    this.elements.achievementList.innerHTML = ACHIEVEMENTS.map((achievement) => {
+      const unlocked = unlockedIds.has(achievement.id);
+      return `
+        <div class="achievement-item ${unlocked ? '' : 'locked'}">
+          <span aria-hidden="true">${unlocked ? achievement.icon : '◇'}</span>
+          <div>
+            <strong>${escapeHtml(achievement.title)}</strong>
+            <small>${escapeHtml(achievement.description)}</small>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   showScreen(name) {

@@ -1,6 +1,8 @@
 import { InputController } from './InputController.js?v=20260720-manual-start';
 import { Renderer } from './Renderer.js?v=20260720-manual-start';
-import { UI } from './UI.js?v=20260720-manual-start';
+import { UI } from './UI.js?v=20260720-settings-progress';
+import { AudioManager } from './AudioManager.js?v=20260720-settings-progress';
+import { PlayerPreferences } from './PlayerPreferences.js?v=20260720-settings-progress';
 
 export class GameClient {
   constructor() {
@@ -16,6 +18,8 @@ export class GameClient {
     this.inputSequence = 0;
     this.lastInputSentAt = 0;
     this.lastFrameAt = performance.now();
+    this.preferences = new PlayerPreferences();
+    this.audio = new AudioManager(this.preferences.getSettings());
 
     this.input = new InputController();
     this.renderer = new Renderer(document.querySelector('#game-canvas'));
@@ -27,6 +31,20 @@ export class GameClient {
       selectCharacter: (characterId) => this.selectCharacter(characterId),
       startGame: (characterId) => this.startGame(characterId),
       leaveRoom: () => this.leaveRoom(),
+      saveAudioSettings: (settings) => this.saveAudioSettings(settings),
+      resetProgress: () => this.resetProgress(),
+    }, {
+      audioSettings: this.preferences.getSettings(),
+      profile: this.preferences.getProfile(),
+    });
+
+    const unlockAudio = () => this.audio.unlock().catch(() => {});
+    document.addEventListener('pointerdown', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+    document.addEventListener('click', (event) => {
+      if (event.target instanceof Element && event.target.closest('button')) {
+        this.audio.playEffect('click');
+      }
     });
 
     this.bindSocketEvents();
@@ -67,12 +85,42 @@ export class GameClient {
       this.input.setEnabled(snapshot.status === 'playing');
       this.renderer.setSnapshot(snapshot, this.localId);
       this.ui.updateGame(snapshot, this.localId);
+      if (snapshot.status === 'gameover') this.recordMatch(snapshot);
     });
 
     this.socket.on('game:event', (event) => {
       this.ui.addEvent(event);
+      this.audio.playEffect(event.type);
       if (event.type === 'ELIMINATION' || event.type === 'GAME_OVER') this.ui.showToast(event.message);
     });
+  }
+
+  saveAudioSettings(settings) {
+    const saved = this.preferences.updateSettings(settings);
+    this.audio.applySettings(saved);
+    return saved;
+  }
+
+  resetProgress() {
+    return this.preferences.resetProfile();
+  }
+
+  recordMatch(snapshot) {
+    const localPlayer = snapshot.players.find((player) => player.id === this.localId && !player.isBot);
+    if (!localPlayer) return;
+    const result = this.preferences.recordMatch(snapshot.matchId, {
+      won: snapshot.winnerId === this.localId,
+      distanceCovered: localPlayer.distanceCovered,
+      playingTime: localPlayer.playingTime,
+      efficiency: localPlayer.efficiency,
+    });
+    if (!result.recorded) return;
+    this.ui.renderProfile(result.profile);
+    if (result.unlocked.length > 0) {
+      this.audio.playEffect('achievement');
+      const names = result.unlocked.map((achievement) => achievement.title).join(', ');
+      this.ui.showToast(`Achievement unlocked: ${names}`);
+    }
   }
 
   emitWithAck(eventName, payload = {}, timeoutMs = 5000) {

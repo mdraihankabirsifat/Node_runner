@@ -121,6 +121,8 @@ export class GameRoom {
     this.lastElimination = null;
     this.roundTimerLimit = BALANCE.maxTimer;
     this.matchActiveTime = 0;
+    this.matchCounter = 0;
+    this.matchId = null;
 
     const hostCharacterId = settings.characterId
       ?? (this.gameMode === 'bot' ? 1 : null);
@@ -323,6 +325,8 @@ export class GameRoom {
   }
 
   resetMatch() {
+    this.matchCounter += 1;
+    this.matchId = `${this.code}-${this.createdAt}-${this.matchCounter}`;
     this.round = 1;
     this.roundTimerLimit = BALANCE.maxTimer;
     this.matchActiveTime = 0;
@@ -939,6 +943,7 @@ export class GameRoom {
       code: this.code,
       hostId: this.hostId,
       status: this.status,
+      matchId: this.matchId,
       round: this.round,
       stateEndsAt: this.stateEndsAt,
       winnerId: this.winnerId,

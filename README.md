@@ -15,6 +15,8 @@ The HTML file is only the browser launcher and page structure. All gameplay, bot
 - Mixed compositions must total 3–8 runners; bot count may be 0
 - Select Polygon, Football Pitch, or Circular arena
 - In-game help panel
+- Homepage settings for independent music and game-sound controls
+- Browser-local career records, high score, and six unlockable achievements
 
 ### Gameplay
 
@@ -310,7 +312,9 @@ Create a pull request into `main` after the team tests the game.
 - Host and join require all clients to use one shared running server.
 - A disconnected player is removed from the current match; automatic reconnection into the same runner is not implemented.
 - The client uses keyboard controls and is optimized for desktop browsers.
-- No sound assets, character sprites, accounts, saved progression, or public matchmaking are included.
+- Music and game sounds are synthesized with the Web Audio API, so no external audio assets are required.
+- Career records and achievements are saved only in the current browser; there are no accounts or cross-device progression sync.
+- Public matchmaking is not included.
 - Internet play requires deployment to a WebSocket-capable Node.js host.
 - Render restarts, deploys, and free-tier spin-downs clear all in-memory rooms.
 - The current in-memory Socket.IO room model must run as a single service instance.

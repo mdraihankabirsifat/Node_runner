@@ -84,6 +84,18 @@ test('the initial exposure timer limit is 30 seconds', () => {
   assert.equal(BALANCE.maxTimer, 30);
 });
 
+test('each match restart receives a stable, unique match id for saved records', () => {
+  const { room, socket } = createRoom(3);
+  const firstMatchId = room.snapshot().matchId;
+  assert.match(firstMatchId, /^ABCDE-/);
+
+  room.status = 'gameover';
+  assert.equal(room.start(socket.id).ok, true);
+  const secondMatchId = room.snapshot().matchId;
+  assert.notEqual(secondMatchId, firstMatchId);
+  assert.equal(room.snapshot().matchId, secondMatchId);
+});
+
 test('matches are capped at seven uniquely assigned characters', () => {
   const { room } = createRoom(99);
   const players = [...room.players.values()];

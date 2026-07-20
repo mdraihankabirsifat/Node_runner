@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#08101f" />
     <title>Node Runner</title>
-    <link rel="stylesheet" href="/styles.css?v=20260720-viewport-fit" />
+    <link rel="stylesheet" href="/styles.css?v=20260720-settings-progress" />
    </head>
   <body>
     <div id="app">
@@ -15,7 +15,10 @@
       <section id="menu-screen" class="screen menu-screen active">
         <header class="topbar">
           <div class="brand-mini"><span class="brand-dot"></span> NODE RUNNER</div>
-          <button id="how-button" class="ghost-button">How to play</button>
+          <div class="topbar-actions">
+            <button id="settings-button" class="ghost-button">Settings</button>
+            <button id="how-button" class="ghost-button">How to play</button>
+          </div>
         </header>
 
         <main class="menu-layout">
@@ -285,10 +288,88 @@
         </div>
       </div>
 
+      <div id="settings-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="modal-card settings-modal-card glass-card">
+          <button id="settings-close-button" class="modal-close" aria-label="Close settings">&times;</button>
+          <p class="small-label">SETTINGS &amp; PROGRESS</p>
+          <h2 id="settings-title">Your runner profile</h2>
+          <p class="settings-intro">Audio preferences and match records are saved automatically on this browser.</p>
+
+          <div class="settings-columns">
+            <section class="settings-section" aria-labelledby="audio-heading">
+              <div class="settings-section-heading">
+                <div>
+                  <span class="settings-icon" aria-hidden="true">&#9835;</span>
+                  <strong id="audio-heading">Audio</strong>
+                </div>
+              </div>
+
+              <div class="audio-setting">
+                <div class="audio-setting-title">
+                  <label for="music-enabled">Music</label>
+                  <label class="switch" aria-label="Enable music">
+                    <input id="music-enabled" type="checkbox" />
+                    <span></span>
+                  </label>
+                </div>
+                <div class="volume-row">
+                  <input id="music-volume" type="range" min="0" max="100" step="5" aria-label="Music volume" />
+                  <output id="music-volume-value" for="music-volume">25%</output>
+                </div>
+              </div>
+
+              <div class="audio-setting">
+                <div class="audio-setting-title">
+                  <label for="sound-enabled">Game sound</label>
+                  <label class="switch" aria-label="Enable game sounds">
+                    <input id="sound-enabled" type="checkbox" />
+                    <span></span>
+                  </label>
+                </div>
+                <div class="volume-row">
+                  <input id="sound-volume" type="range" min="0" max="100" step="5" aria-label="Game sound volume" />
+                  <output id="sound-volume-value" for="sound-volume">70%</output>
+                </div>
+              </div>
+            </section>
+
+            <section class="settings-section" aria-labelledby="records-heading">
+              <div class="settings-section-heading">
+                <div>
+                  <span class="settings-icon" aria-hidden="true">&#9733;</span>
+                  <strong id="records-heading">Career records</strong>
+                </div>
+              </div>
+              <div class="career-grid">
+                <div><span>Matches</span><strong id="profile-matches">0</strong></div>
+                <div><span>Wins</span><strong id="profile-wins">0</strong></div>
+                <div><span>High score</span><strong id="profile-distance">0 px</strong></div>
+                <div><span>Best survival</span><strong id="profile-time">0s</strong></div>
+              </div>
+              <div class="best-efficiency"><span>Best efficiency</span><strong id="profile-efficiency">0.0%</strong></div>
+            </section>
+          </div>
+
+          <div class="achievements-heading">
+            <div>
+              <p class="small-label">ACHIEVEMENTS</p>
+              <strong>Milestones</strong>
+            </div>
+            <span id="achievement-count">0 / 6</span>
+          </div>
+          <div id="achievement-list" class="achievement-list"></div>
+
+          <div class="settings-footer">
+            <span>Progress is stored only on this device and browser.</span>
+            <button id="reset-progress-button" class="danger-link" type="button">Reset progress</button>
+          </div>
+        </div>
+      </div>
+
       <div id="toast" class="toast hidden"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="/js/main.js?v=20260720-manual-start"></script>
+    <script type="module" src="/js/main.js?v=20260720-settings-progress"></script>
   </body>
 </html>
