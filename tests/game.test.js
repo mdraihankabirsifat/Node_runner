@@ -323,6 +323,31 @@ test('shrinking resets survivor timers and lowers the next limit by five seconds
   assert.equal(room.snapshot().maxTimer, 25);
 });
 
+test('a rebuilt node restores health when the final two-player round begins', () => {
+  const { room } = createRoom(4);
+  const [firstSurvivor, secondSurvivor, ...eliminated] = [...room.players.values()];
+
+  firstSurvivor.lastNodeId = 'node-0';
+  secondSurvivor.lastNodeId = 'node-0';
+  firstSurvivor.health = 24;
+  for (const player of eliminated) player.health = 0;
+
+  room.evaluateEliminations();
+
+  assert.equal(room.status, 'transition');
+  assert.equal(room.arena.nodes.length, 1);
+  assert.equal(firstSurvivor.lastNodeId, null);
+  assert.equal(secondSurvivor.lastNodeId, null);
+
+  const finalRoundNode = room.arena.nodes[0];
+  firstSurvivor.x = finalRoundNode.x;
+  firstSurvivor.y = finalRoundNode.y;
+  room.claimFreeNodes();
+
+  assert.equal(firstSurvivor.occupiedNodeId, finalRoundNode.id);
+  assert.equal(firstSurvivor.health, BALANCE.maxHealth);
+});
+
 test('the next round countdown starts when the elimination page ends', () => {
   const { room } = createRoom(4);
   const eliminated = room.players.get('host');

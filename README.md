@@ -1,195 +1,191 @@
 # Node Runner
-## 📸 Screenshots
 
-### Home View
-![Screenshot 1](Asset/ss/1.png)
+**Kickoff. Run. Survive.**
 
-### Polygon View
-![Screenshot 2](Asset/ss/2.png)
+Node Runner is a server-authoritative 2D survival game for 3–7 runners. Race for exclusive nodes, manage health and exposure time, and outlast every human or bot opponent as the arena shrinks around you.
 
-### Pitch View
-![Screenshot 3](Asset/ss/3.png)
+[Play in your browser](https://node-runner-xayv.onrender.com) · [Windows build guide](docs/WINDOWS_BUILD.md) · [Release checklist](docs/RELEASE_CHECKLIST.md)
 
-### Circle View
-![Screenshot 4](Asset/ss/4.png)
+> Do not use VS Code Live Server. Multiplayer rooms, bots, and match simulation require the Node.js and Socket.IO server.
 
-### Eminination
-![Screenshot 5](Asset/ss/5.png)
+## Highlights
 
-### Result 
-![Screenshot 6](Asset/ss/6.png)
+- Three game types: bots, human multiplayer, and mixed human/bot rooms
+- Private host/join rooms using five-character room codes
+- Polygon, football pitch, and circular arenas
+- Server-owned movement, collisions, bots, health, timers, and win conditions
+- Browser-local music and sound settings, records, high scores, and achievements
+- Match-completion statistics for distance, playing time, and efficiency
+- Browser deployment on Render plus an online Windows desktop wrapper
 
-Node Runner is a server-authoritative 2D survival game built with Node.js, Express, Socket.IO, and HTML5 Canvas. The browser handles rendering and input, while the server owns room state, bot behavior, arena rules, collisions, timer and health updates, and win conditions.
+## How to play
 
-## What it includes
+Every arena has one fewer active node than living runners, so someone is always exposed.
 
-- Play instantly against bots with 3 to 8 total runners
-- Host human-only rooms or mixed rooms with human players plus exact bot fill
-- Join rooms with a five-character room code
-- Choose between Polygon, Football Pitch, and Circular arenas
-- Track health, timer, zone state, and end-of-match results in the UI
-- Save browser-local settings, match records, high scores, and achievements
-- Run on a single Node.js server with full multiplayer synchronization
+1. Move to an unoccupied node before your exposure timer fills.
+2. Capturing a different node restores your health and pauses your timer.
+3. Do not remain inside a node forever—node occupation drains health.
+4. Use the center to recover health slowly, but remember that your timer keeps increasing there.
+5. Rotate after leaving a node; that node is locked to you for three seconds.
+6. Survive each elimination and the shrinking arena. The last runner alive wins.
 
-## Gameplay summary
+### Controls
 
-- Each arena always has one fewer active node than alive players
-- Only one runner can occupy a node at a time
-- Capturing a different node restores health to full
-- Re-entering the same node immediately does not restore health
-- Leaving a node creates a personal three-second cooldown for that player
-- The timer pauses while you own a node and increases everywhere else
-- Staying in a node drains health, while the center zone recovers health slowly
-- Field movement drains health slowly and gets harsher near the timer limit
-- Eliminations happen when health reaches zero or the timer reaches its maximum
-- After each elimination, the arena shrinks and one node disappears
-- The last surviving player wins
+| Action | Input |
+|---|---|
+| Move | `WASD` or arrow keys |
+| Pause/resume | `Q` |
+| Desktop fullscreen | `F11` or `Alt` + `Enter` |
+| Leave desktop fullscreen | `Escape` |
 
-Bots use a small state machine with SEEK_NODE, HOLD_NODE, ROTATE, RECOVER_CENTER, and INTERCEPT states.
+## Game types
 
-## Balance values
+| Type | Description |
+|---|---|
+| Bot | Start instantly with one human and AI-controlled opponents. |
+| Human | Host a room and wait for all human runners to join. |
+| Mix | Choose human and bot counts; the match starts after the configured humans join, then bots fill the remaining slots. |
 
-All core tuning values live in [server/constants.js](server/constants.js).
+The minimum match size is three runners. Mixed games require at least two humans; total player count is capped at seven.
 
-| Mechanic | Value |
-|---|---:|
-| Maximum health | 100 |
-| Initial round timer | 30 seconds |
-| Timer after each shrink | Previous limit minus 5 seconds, minimum 5 |
-| Player speed | 228 px/s |
-| Node health drain | 8.5 health/s |
-| Field health drain | 0.75 health/s |
-| Center recovery | 5.5 health/s |
-| Timer outside a node | +1 second/s |
-| Critical timer pressure begins | 80% |
-| Initial countdown | 3 seconds |
-| Arena transition | 1.8 seconds |
+## Screenshots
+
+| Home | Polygon arena |
+|---|---|
+| ![Node Runner home screen](Asset/ss/1.png) | ![Polygon arena](Asset/ss/2.png) |
+| Football pitch | Circular arena |
+| ![Football pitch arena](Asset/ss/3.png) | ![Circular arena](Asset/ss/4.png) |
+| Elimination | Match result |
+| ![Elimination screen](Asset/ss/5.png) | ![Match result screen](Asset/ss/6.png) |
 
 ## Run locally
 
 ### Requirements
 
-- Node.js 24.x
+- Node.js 24 LTS
 - npm
 
-### Install
+### Install and start
 
 ```powershell
 npm install
-```
-
-### Start the server
-
-```powershell
 npm start
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-Do not use Live Server. Rooms, bots, host/join, and real-time gameplay all depend on the Node.js and Socket.IO server.
+The server listens on `0.0.0.0`, so devices on the same Wi-Fi network can connect using the host computer’s IPv4 address, for example `http://192.168.0.15:3000`. Windows Firewall may ask you to allow Node.js on private networks.
 
-### Development and checks
+### Development and verification
 
 ```powershell
 npm run dev
-```
-
-```powershell
 npm run check
-```
-
-```powershell
 npm test
 ```
 
-## Test multiplayer locally
+To test multiplayer locally, open the game in two browser windows, host a room in one, then join its room code from the other.
 
-1. Start the server with `npm start`.
-2. Open [http://localhost:3000](http://localhost:3000) in two browser windows.
-3. Host a room in the first window.
-4. Copy the room code.
-5. Join the same code in the second window.
-6. Fill the lobby with the desired human slots or let the host add bots when the match starts.
+## Deployment
 
-## Play over Wi-Fi
+### Render web service
 
-The server listens on all network interfaces.
-
-1. On the host machine, run `ipconfig`.
-2. Find the IPv4 address, such as `192.168.0.15`.
-3. Other devices on the same network can open `http://192.168.0.15:3000`.
-
-Windows Firewall may ask for permission. Allow Node.js on the private network.
-
-## Deploy on Render
-
-The repository includes a root-level Render Blueprint in [render.yaml](render.yaml). It deploys the Express app as a single web service and serves the `public/` folder and Socket.IO traffic from the same origin.
-
-### Blueprint deployment
+The root [render.yaml](render.yaml) deploys the complete game as one Node web service. Express serves `public/`, Socket.IO uses the same origin, and `/health` provides the health check.
 
 1. Push the repository to GitHub.
-2. In Render, choose New → Blueprint.
+2. In Render, choose **New → Blueprint**.
 3. Connect the repository and select [render.yaml](render.yaml).
-4. Deploy the created web service.
+4. Deploy the generated service.
 
-### Expected Render settings
+| Setting | Value |
+|---|---|
+| Runtime | Node |
+| Region | Singapore |
+| Plan | Free |
+| Instances | 1 |
+| Build command | `npm ci` |
+| Start command | `npm start` |
+| Health check | `/health` |
+| Auto deploy | Commits to `main` |
 
-- Runtime: Node
-- Region: Singapore
-- Plan: Free
-- Instances: 1
-- Build command: npm ci
-- Start command: npm start
-- Health check path: /health
-- Auto deploy: every commit to main
+Game rooms and matches remain in memory for this game-jam build. A restart or redeploy ends active matches, and the service must remain at one instance unless shared state is introduced later.
 
-All rooms, players, matches, and bots live in memory. That keeps deployment simple, but active matches are lost if the service restarts, redeploys, or scales beyond one instance.
+### Windows and itch.io release
 
-## Project layout
+The Electron desktop edition securely loads the shared Render game, so desktop and browser players use the same multiplayer rooms. It is intentionally online-only.
+
+- [Build the Windows portable EXE and ZIP](docs/WINDOWS_BUILD.md)
+- [Prepare the itch.io submission](docs/ITCH_SUBMISSION.md)
+- [Use the release checklist](docs/RELEASE_CHECKLIST.md)
+- [Copy the prepared itch.io page text](docs/ITCH_PAGE_COPY.md)
+
+## Architecture
+
+```text
+Browser or Electron client
+        │  Socket.IO + HTTP (same origin)
+        ▼
+Express / Socket.IO server
+        │
+        ├── rooms and lobby composition
+        ├── authoritative movement and collisions
+        ├── bots, health, timers, and eliminations
+        └── snapshots and game events
+```
+
+### Repository map
 
 ```text
 Node_runner/
-├── package.json
-├── server.js
-├── server/
-│   ├── arena.js
-│   ├── constants.js
-│   └── GameRoom.js
-├── public/
-│   ├── index.html
-│   ├── styles.css
-│   └── js/
-│       ├── AudioManager.js
-│       ├── GameClient.js
-│       ├── InputController.js
-│       ├── main.js
-│       ├── PlayerPreferences.js
-│       ├── Renderer.js
-│       └── UI.js
-├── tests/
-│   ├── game.test.js
-│   └── preferences.test.js
-├── Asset/
-│   └── music/
-├── charcters/
-├── LLM_HANDOFF.md
-├── README.md
-└── render.yaml
+├── server.js                    # Express, HTTP, Socket.IO, and /health
+├── server/                      # Authoritative simulation and arena rules
+├── public/                      # Browser UI, Canvas renderer, audio, and client
+├── desktop/                     # Secure Electron wrapper and offline screen
+├── tests/                       # Game and preference tests
+├── docs/                        # Windows and itch.io release documentation
+├── Asset/                       # Screenshots and music
+├── charcters/                   # Character sprites (name retained for routes)
+├── electron-builder.config.cjs # Windows packaging configuration
+├── render.yaml                 # Render Blueprint
+└── package.json
 ```
 
-## Key files
+### Key files
 
-- [server.js](server.js) creates the HTTP server, serves static files, exposes `/health`, and wires Socket.IO room events.
-- [server/GameRoom.js](server/GameRoom.js) contains the authoritative match simulation, lobby logic, bots, movement, collisions, and scoring.
-- [server/arena.js](server/arena.js) builds the arena geometry and clamps movement to the play area.
-- [public/js/GameClient.js](public/js/GameClient.js) manages Socket.IO connection, room requests, input transmission, snapshots, and reconciliation.
-- [public/js/Renderer.js](public/js/Renderer.js) draws the arena, players, overlays, and match state on Canvas.
-- [public/js/PlayerPreferences.js](public/js/PlayerPreferences.js) stores browser-local settings and match progression.
+- [server/GameRoom.js](server/GameRoom.js) — rooms, players, bots, movement, collisions, rounds, and scoring
+- [server/arena.js](server/arena.js) — arena geometry and movement boundaries
+- [server/constants.js](server/constants.js) — gameplay balance values
+- [public/js/GameClient.js](public/js/GameClient.js) — Socket.IO requests, snapshots, input, and reconciliation
+- [public/js/Renderer.js](public/js/Renderer.js) — Canvas arena and player rendering
+- [public/js/UI.js](public/js/UI.js) — menus, lobby, settings, status, and results
+- [public/js/PlayerPreferences.js](public/js/PlayerPreferences.js) — local settings, records, and achievements
 
-## Known limits
+## Current balance
 
-- All clients must connect to the same running server.
-- Disconnected players are removed from the current match.
+All tuning values are defined in [server/constants.js](server/constants.js).
+
+| Mechanic | Value |
+|---|---:|
+| Maximum health | 100 |
+| Initial timer | 30 seconds |
+| Timer reduction after a shrink | 5 seconds |
+| Minimum round timer | 5 seconds |
+| Player speed | 228 px/s |
+| Node health drain | 8.5 health/s |
+| Field health drain | 0.75 health/s |
+| Center recovery | 5.5 health/s |
+| Personal node re-entry lock | 3 seconds |
+| Initial countdown | 3 seconds |
+| Arena transition | 6 seconds |
+
+## Known limitations
+
+- All clients in a room must connect to the same running server instance.
+- Disconnected runners are removed from an active match.
 - There is no account system, public matchmaking, or reconnect-to-match support.
-- Browser progress is stored locally only.
-- The current in-memory room model is intended for a single running service instance.
+- Settings and progress are stored only in the current browser or desktop profile.
+- The Windows edition requires internet access because the shared Render server hosts rooms, bots, and authoritative simulation.
+
+## Technology
+
+JavaScript · HTML5 Canvas · Node.js · Express · Socket.IO · Electron

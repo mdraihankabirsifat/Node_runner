@@ -847,6 +847,9 @@ export class GameRoom {
     for (const node of this.arena.nodes) node.occupantId = null;
     for (const player of alivePlayers) {
       player.occupiedNodeId = null;
+      // The arena is rebuilt after every elimination and node IDs are reused.
+      // Treat the rebuilt nodes as fresh captures for the new round.
+      player.lastNodeId = null;
       player.nodeReentryLocks.clear();
       player.timer = 0;
       player.zone = 'field';
