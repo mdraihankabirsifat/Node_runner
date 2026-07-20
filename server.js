@@ -27,6 +27,13 @@ app.use(express.static(path.join(__dirname, 'public'), {
     response.setHeader('Expires', '0');
   },
 }));
+app.use('/characters', express.static(path.join(__dirname, 'charcters'), {
+  etag: false,
+  lastModified: false,
+  setHeaders(response) {
+    response.setHeader('Cache-Control', 'public, max-age=86400');
+  },
+}));
 app.get('/health', (_request, response) => {
   response.status(200).json({
     status: 'ok',
@@ -54,13 +61,6 @@ function normalizedCode(value) {
 
 function callbackSafe(callback, result) {
   if (typeof callback === 'function') callback(result);
-}
-
-function scheduleMixedAutoStart(room) {
-  if (!room?.isMixedReadyToStart()) return;
-  setImmediate(() => {
-    if (room.isMixedReadyToStart()) room.start(room.hostId);
-  });
 }
 
 io.on('connection', (socket) => {
@@ -103,13 +103,12 @@ io.on('connection', (socket) => {
       socket.leave(currentRoomCode);
     }
 
-    const result = room.addHuman(socket, payload.name);
+    const result = room.addHuman(socket, payload.name, payload.characterId);
     callbackSafe(callback, {
       ...result,
       code,
       room: result.ok ? room.serializeLobby() : undefined,
     });
-    if (result.ok) scheduleMixedAutoStart(room);
   });
 
   socket.on('room:updateSettings', (payload = {}, callback) => {
@@ -120,16 +119,24 @@ io.on('connection', (socket) => {
     }
     const result = room.updateSettings(socket.id, payload);
     callbackSafe(callback, result);
-    if (result.ok) scheduleMixedAutoStart(room);
   });
 
-  socket.on('room:start', (_payload, callback) => {
+  socket.on('room:setCharacter', (payload = {}, callback) => {
     const room = rooms.get(socket.data.roomCode);
     if (!room) {
       callbackSafe(callback, { ok: false, error: 'You are not in a room.' });
       return;
     }
-    callbackSafe(callback, room.start(socket.id));
+    callbackSafe(callback, room.setCharacter(socket.id, payload.characterId));
+  });
+
+  socket.on('room:start', (payload = {}, callback) => {
+    const room = rooms.get(socket.data.roomCode);
+    if (!room) {
+      callbackSafe(callback, { ok: false, error: 'You are not in a room.' });
+      return;
+    }
+    callbackSafe(callback, room.start(socket.id, payload.characterId));
   });
 
   socket.on('room:leave', (_payload, callback) => {

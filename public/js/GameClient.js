@@ -1,6 +1,6 @@
-import { InputController } from './InputController.js?v=20260716-4';
-import { Renderer } from './Renderer.js?v=20260716-4';
-import { UI } from './UI.js?v=20260716-4';
+import { InputController } from './InputController.js?v=20260720-lobby-stable';
+import { Renderer } from './Renderer.js?v=20260720-lobby-stable';
+import { UI } from './UI.js?v=20260720-lobby-stable';
 
 export class GameClient {
   constructor() {
@@ -24,7 +24,8 @@ export class GameClient {
       hostGame: (setup) => this.hostGame(setup),
       joinGame: (setup) => this.joinGame(setup),
       updateSettings: (settings) => this.updateSettings(settings),
-      startGame: () => this.startGame(),
+      selectCharacter: (characterId) => this.selectCharacter(characterId),
+      startGame: (characterId) => this.startGame(characterId),
       leaveRoom: () => this.leaveRoom(),
     });
 
@@ -53,6 +54,10 @@ export class GameClient {
     });
 
     this.socket.on('game:snapshot', (snapshot) => {
+      if (snapshot.status === 'lobby') {
+        this.input.setEnabled(false);
+        return;
+      }
       const firstGameSnapshot = !this.latestSnapshot || this.latestSnapshot.code !== snapshot.code;
       this.latestSnapshot = snapshot;
       this.roomCode = snapshot.code;
@@ -146,9 +151,16 @@ export class GameClient {
     else this.ui.showLobbyError('');
   }
 
-  async startGame() {
+  async selectCharacter(characterId) {
+    const result = await this.emitWithAck('room:setCharacter', { characterId });
+    if (!result.ok) this.ui.showLobbyError(result.error);
+    else this.ui.showLobbyError('');
+    return result;
+  }
+
+  async startGame(characterId = null) {
     this.ui.showLobbyError('');
-    const result = await this.emitWithAck('room:start', {});
+    const result = await this.emitWithAck('room:start', { characterId });
     if (!result.ok) this.ui.showLobbyError(result.error);
   }
 

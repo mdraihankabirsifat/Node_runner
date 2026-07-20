@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#08101f" />
     <title>Node Runner</title>
-    <link rel="stylesheet" href="/styles.css?v=20260716-4" />
+    <link rel="stylesheet" href="/styles.css?v=20260720-lobby-stable" />
   </head>
   <body>
     <div id="app">
@@ -44,6 +44,11 @@
 
             <label class="field-label" for="player-name">Runner name</label>
             <input id="player-name" class="text-input" maxlength="16" value="Runner" autocomplete="off" />
+
+            <div id="menu-character-setting">
+              <label class="field-label">Character</label>
+              <div id="menu-character-picker" class="character-picker menu-character-picker"></div>
+            </div>
 
             <label class="field-label">Game type</label>
             <div class="mode-tabs" id="game-mode-tabs">
@@ -146,6 +151,14 @@
 
             <div id="lobby-player-list" class="lobby-player-list"></div>
 
+            <div class="character-picker-section">
+              <div class="character-picker-heading">
+                <span class="field-label">Choose your character</span>
+                <small>Only available characters are shown.</small>
+              </div>
+              <div id="character-picker" class="character-picker"></div>
+            </div>
+
             <div id="host-settings" class="host-settings hidden">
               <div class="setting-grid compact">
                 <label>
@@ -164,7 +177,6 @@
                     <option value="5">5</option>
                     <option value="6" selected>6</option>
                     <option value="7">7</option>
-                    <option value="8">8</option>
                   </select>
                 </label>
                 <label id="lobby-bot-count-setting">
@@ -273,6 +285,6 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="/js/main.js?v=20260716-4"></script>
+    <script type="module" src="/js/main.js?v=20260720-lobby-stable"></script>
   </body>
 </html>

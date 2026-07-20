@@ -20,6 +20,20 @@ function formatPlayingTime(seconds) {
     : `${remainingSeconds}s`;
 }
 
+const CHARACTER_FOLDERS = Object.freeze({
+  1: 'char 1 female',
+  2: 'char 2 male',
+  3: 'char 3 male body',
+  4: 'char 4 female',
+  5: 'char 5 female',
+  6: 'cahr 6 male',
+  7: 'char 7 male',
+});
+
+function characterPreviewUrl(characterId) {
+  return `/characters/${encodeURIComponent(CHARACTER_FOLDERS[characterId])}/walk/down/1.png`;
+}
+
 export class UI {
   constructor(actions) {
     this.actions = actions;
@@ -28,6 +42,7 @@ export class UI {
     this.mixedHumanCount = 2;
     this.mixedBotCount = 1;
     this.arenaType = 'polygon';
+    this.selectedCharacterId = 1;
     this.localId = null;
     this.currentRoom = null;
     this.toastTimer = null;
@@ -42,6 +57,8 @@ export class UI {
     this.elements = {
       connectionPill: document.querySelector('#connection-pill'),
       playerName: document.querySelector('#player-name'),
+      menuCharacterSetting: document.querySelector('#menu-character-setting'),
+      menuCharacterPicker: document.querySelector('#menu-character-picker'),
       playerCountValue: document.querySelector('#player-count-value'),
       countMinus: document.querySelector('#count-minus'),
       countPlus: document.querySelector('#count-plus'),
@@ -74,6 +91,7 @@ export class UI {
       lobbyStatusText: document.querySelector('#lobby-status-text'),
       lobbyTitle: document.querySelector('#lobby-title'),
       lobbyPlayerList: document.querySelector('#lobby-player-list'),
+      characterPicker: document.querySelector('#character-picker'),
       hostBadge: document.querySelector('#host-badge'),
       hostSettings: document.querySelector('#host-settings'),
       lobbyGameMode: document.querySelector('#lobby-game-mode'),
@@ -105,10 +123,17 @@ export class UI {
     };
 
     this.bindEvents();
+    this.renderMenuCharacterPicker();
   }
 
   bindEvents() {
     this.elements.countMinus.addEventListener('click', () => this.setPlayerCount(this.playerCount - 1));
+    this.elements.menuCharacterPicker.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-character-id]');
+      if (!button) return;
+      this.selectedCharacterId = Number(button.dataset.characterId);
+      this.renderMenuCharacterPicker();
+    });
     this.elements.countPlus.addEventListener('click', () => this.setPlayerCount(this.playerCount + 1));
     this.elements.humanCountMinus.addEventListener(
       'click',
@@ -161,6 +186,26 @@ export class UI {
     });
 
     this.elements.lobbyBackButton.addEventListener('click', () => this.actions.leaveRoom());
+    this.elements.characterPicker.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-character-id]');
+      if (!button || button.disabled) return;
+      const previousCharacterId = this.selectedCharacterId;
+      const characterId = Number(button.dataset.characterId);
+      this.selectedCharacterId = characterId;
+      for (const option of this.elements.characterPicker.querySelectorAll('[data-character-id]')) {
+        const selected = Number(option.dataset.characterId) === characterId;
+        option.classList.toggle('selected', selected);
+        option.setAttribute('aria-pressed', String(selected));
+        if (!option.classList.contains('taken')) {
+          option.querySelector('span').textContent = selected ? 'YOU' : option.dataset.characterId;
+        }
+      }
+      const result = await this.actions.selectCharacter(characterId);
+      if (!result?.ok) {
+        this.selectedCharacterId = previousCharacterId;
+        this.updateLobby(this.currentRoom, this.localId);
+      }
+    });
     this.elements.gameLeaveButton.addEventListener('click', () => this.actions.leaveRoom());
     this.elements.copyCodeButton.addEventListener('click', async () => {
       const code = this.currentRoom?.code;
@@ -180,7 +225,10 @@ export class UI {
     this.elements.lobbyPlayerCount.addEventListener('change', updateSettings);
     this.elements.lobbyBotCount.addEventListener('change', updateSettings);
     this.elements.lobbyArena.addEventListener('change', updateSettings);
-    this.elements.startGameButton.addEventListener('click', () => this.actions.startGame());
+    this.elements.startGameButton.addEventListener(
+      'click',
+      () => this.actions.startGame(this.selectedCharacterId),
+    );
     this.elements.restartButton.addEventListener('click', () => this.actions.startGame());
   }
 
@@ -191,7 +239,7 @@ export class UI {
   }
 
   setPlayerCount(value) {
-    this.playerCount = clamp(value, 3, 8);
+    this.playerCount = clamp(value, 3, 7);
     this.elements.playerCountValue.textContent = String(this.playerCount);
   }
 
@@ -203,8 +251,13 @@ export class UI {
 
     const isBot = this.gameMode === 'bot';
     const isMix = this.gameMode === 'mix';
+    if (isBot && !Number.isInteger(this.selectedCharacterId)) {
+      this.selectedCharacterId = 1;
+      this.renderMenuCharacterPicker();
+    }
     this.elements.standardCountSetting.classList.toggle('hidden', isMix);
     this.elements.mixedCountSettings.classList.toggle('hidden', !isMix);
+    this.elements.menuCharacterSetting.classList.toggle('hidden', !isBot);
     this.elements.botsButton.classList.toggle('hidden', !isBot);
     this.elements.hostButton.classList.toggle('hidden', isBot);
     this.elements.hostButtonTitle.textContent = isMix ? 'Host mixed game' : 'Host human game';
@@ -214,10 +267,10 @@ export class UI {
   }
 
   setMixedComposition(humanCount, botCount) {
-    let humans = clamp(humanCount, 2, 8);
-    let bots = clamp(botCount, 0, 8 - humans);
+    let humans = clamp(humanCount, 2, 7);
+    let bots = clamp(botCount, 0, 7 - humans);
     if (humans + bots < 3) {
-      if (humanCount !== this.mixedHumanCount) humans = Math.min(8 - bots, 3 - bots);
+      if (humanCount !== this.mixedHumanCount) humans = Math.min(7 - bots, 3 - bots);
       else bots = 3 - humans;
     }
 
@@ -240,12 +293,32 @@ export class UI {
     return clean || 'Runner';
   }
 
+  renderMenuCharacterPicker() {
+    this.elements.menuCharacterPicker.innerHTML = Object.keys(CHARACTER_FOLDERS).map((value) => {
+      const characterId = Number(value);
+      const selected = characterId === this.selectedCharacterId;
+      return `
+        <button
+          type="button"
+          class="character-option ${selected ? 'selected' : ''}"
+          data-character-id="${characterId}"
+          aria-label="Choose character ${characterId}"
+          aria-pressed="${selected}"
+        >
+          <img src="${characterPreviewUrl(characterId)}" alt="" />
+          <span>${selected ? 'YOU' : characterId}</span>
+        </button>
+      `;
+    }).join('');
+  }
+
   getSetup() {
     const setup = {
       name: this.getPlayerName(),
       arenaType: this.arenaType,
       gameMode: this.gameMode,
     };
+    if (this.gameMode === 'bot') setup.characterId = this.selectedCharacterId;
     if (this.gameMode === 'mix') {
       setup.humanPlayers = this.mixedHumanCount;
       setup.botCount = this.mixedBotCount;
@@ -264,11 +337,11 @@ export class UI {
     let botCount = Number(this.elements.lobbyBotCount.value);
 
     if (gameMode === 'human') {
-      humanPlayers = clamp(humanPlayers, 3, 8);
+      humanPlayers = clamp(humanPlayers, 3, 7);
       botCount = 0;
     } else {
-      humanPlayers = clamp(humanPlayers, 2, 8);
-      botCount = clamp(botCount, 0, 8 - humanPlayers);
+      humanPlayers = clamp(humanPlayers, 2, 7);
+      botCount = clamp(botCount, 0, 7 - humanPlayers);
       if (humanPlayers + botCount < 3) botCount = 3 - humanPlayers;
     }
 
@@ -339,13 +412,49 @@ export class UI {
     this.elements.lobbyCompositionNote.textContent = isMixed
       ? `${humanSlots} human + ${botCount} bot = ${room.maxPlayers} total runners`
       : `${humanSlots} human runners · no bots`;
-    this.elements.startGameButton.disabled = false;
+    const allHumansSelected = humanPlayers.every(
+      (player) => Number.isInteger(player.characterId),
+    );
+    this.elements.startGameButton.disabled = humanPlayers.length < humanSlots
+      || !allHumansSelected;
+
+    const localPlayer = humanPlayers.find((player) => player.id === localId);
+    this.selectedCharacterId = localPlayer?.characterId ?? null;
+    const charactersTakenByOthers = new Set(
+      humanPlayers
+        .filter((player) => player.id !== localId)
+        .map((player) => player.characterId),
+    );
+    this.elements.characterPicker.innerHTML = Object.keys(CHARACTER_FOLDERS)
+      .filter((value) => {
+        const characterId = Number(value);
+        return localPlayer?.characterId === characterId
+          || !charactersTakenByOthers.has(characterId);
+      })
+      .map((value) => {
+      const characterId = Number(value);
+      const selected = localPlayer?.characterId === characterId;
+      return `
+        <button
+          type="button"
+          class="character-option ${selected ? 'selected' : ''}"
+          data-character-id="${characterId}"
+          aria-label="Choose character ${characterId}"
+          aria-pressed="${selected}"
+        >
+          <img src="${characterPreviewUrl(characterId)}" alt="" />
+          <span>${selected ? 'YOU' : characterId}</span>
+        </button>
+      `;
+    }).join('');
 
     const cards = humanPlayers.map((player) => `
       <div class="lobby-player">
-        <span class="player-color-dot" style="color:${player.color};background:${player.color}"></span>
+        ${player.characterId
+          ? `<img class="lobby-character-avatar" src="${characterPreviewUrl(player.characterId)}" alt="" />`
+          : '<span class="unselected-character">?</span>'}
         <strong>${escapeHtml(player.name)}${player.id === localId ? ' <span class="you-tag">YOU</span>' : ''}</strong>
-        <small>${player.isHost ? 'HOST' : 'READY'}</small>
+        <small>${player.characterId ? (player.isHost ? 'HOST' : 'READY') : 'CHOOSING'}</small>
       </div>
     `);
 

@@ -84,6 +84,75 @@ test('the initial exposure timer limit is 30 seconds', () => {
   assert.equal(BALANCE.maxTimer, 30);
 });
 
+test('matches are capped at seven uniquely assigned characters', () => {
+  const { room } = createRoom(99);
+  const players = [...room.players.values()];
+  const characterIds = players.map((player) => player.characterId);
+
+  assert.equal(room.maxPlayers, 7);
+  assert.equal(players.length, 7);
+  assert.deepEqual(new Set(characterIds), new Set([1, 2, 3, 4, 5, 6, 7]));
+  assert.deepEqual(
+    room.snapshot().players.map((player) => player.characterId),
+    characterIds,
+  );
+});
+
+test('human players can choose an available character in the lobby', () => {
+  const room = new GameRoom(
+    makeFakeIo(),
+    'PICKS',
+    {
+      name: 'Host',
+      maxPlayers: 3,
+      arenaType: 'polygon',
+      gameMode: 'human',
+      characterId: 6,
+    },
+    makeSocket('host'),
+  );
+  room.addHuman(makeSocket('guest'), 'Guest', 6);
+
+  assert.equal(room.players.get('host').characterId, 6);
+  assert.equal(room.players.get('guest').characterId, null);
+  assert.equal(room.setCharacter('host', 7).ok, true);
+  assert.equal(room.players.get('host').characterId, 7);
+  assert.equal(room.setCharacter('guest', 7).ok, false);
+  assert.notEqual(room.players.get('guest').characterId, 7);
+  assert.equal(room.setCharacter('guest', 99).ok, false);
+
+  room.addHuman(makeSocket('guest-2'), 'Guest 2');
+  assert.equal(room.start('host', 5).ok, false);
+  assert.equal(room.setCharacter('guest', 1).ok, true);
+  assert.equal(room.setCharacter('guest-2', 2).ok, true);
+  assert.equal(room.start('host', 5).ok, true);
+  assert.equal(
+    room.snapshot().players.find((player) => player.id === 'host').characterId,
+    5,
+  );
+});
+
+test('lobby ticks do not emit game snapshots or dismiss character selection', () => {
+  const io = makeFakeIo();
+  const room = new GameRoom(
+    io,
+    'LOBBY',
+    { name: 'Host', maxPlayers: 3, arenaType: 'polygon', gameMode: 'human' },
+    makeSocket('host'),
+  );
+  const snapshotsBeforeTick = io.events.filter(
+    (event) => event.name === 'game:snapshot',
+  ).length;
+
+  room.tick(1, Date.now());
+
+  const snapshotsAfterTick = io.events.filter(
+    (event) => event.name === 'game:snapshot',
+  ).length;
+  assert.equal(snapshotsAfterTick, snapshotsBeforeTick);
+  assert.equal(room.status, 'lobby');
+});
+
 test('a node accepts only one player and blocks another runner', () => {
   const { room } = createRoom(4);
   const [first, second] = [...room.players.values()];
@@ -278,6 +347,10 @@ test('mixed mode waits for its human slots and then adds the exact bot count', (
   const guest = makeSocket('guest');
   assert.equal(room.addHuman(guest, 'Guest').ok, true);
   assert.equal(room.serializeLobby().players.length, 2);
+  assert.equal(room.isMixedReadyToStart(), false);
+  assert.equal(room.start(host.id).ok, false);
+  assert.equal(room.setCharacter(host.id, 1).ok, true);
+  assert.equal(room.setCharacter(guest.id, 2).ok, true);
   assert.equal(room.isMixedReadyToStart(), true);
   assert.equal(room.start(host.id).ok, true);
   assert.equal([...room.players.values()].filter((player) => player.isBot).length, 2);
@@ -304,6 +377,10 @@ test('human mode keeps a minimum of three humans and never adds bots', () => {
   for (const id of ['guest-1', 'guest-2']) {
     assert.equal(room.addHuman(makeSocket(id), id).ok, true);
   }
+  assert.equal(room.start(host.id).ok, false);
+  ['host', 'guest-1', 'guest-2'].forEach((id, index) => {
+    assert.equal(room.setCharacter(id, index + 1).ok, true);
+  });
   assert.equal(room.start(host.id).ok, true);
   assert.equal([...room.players.values()].some((player) => player.isBot), false);
 });

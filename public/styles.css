@@ -595,6 +595,119 @@ select:focus-visible {
   gap: 9px;
 }
 
+.character-picker-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.character-picker-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.character-picker-heading .field-label {
+  margin: 0;
+}
+
+.character-picker-heading small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.character-picker {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(48px, 1fr));
+  gap: 7px;
+}
+
+.menu-character-picker {
+  margin-top: 7px;
+}
+
+.menu-character-picker .character-option {
+  height: 64px;
+}
+
+.menu-character-picker .character-option img {
+  width: 56px;
+  height: 56px;
+}
+
+.character-option {
+  position: relative;
+  min-width: 0;
+  height: 76px;
+  overflow: hidden;
+  border-radius: 12px;
+  color: #9db0c7;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  transition: 0.16s ease;
+}
+
+.character-option:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(101, 231, 255, 0.45);
+  background: rgba(101, 231, 255, 0.08);
+}
+
+.character-option.selected {
+  color: #06111f;
+  border-color: var(--cyan);
+  background: linear-gradient(160deg, rgba(101, 231, 255, 0.3), rgba(107, 143, 255, 0.2));
+  box-shadow: 0 0 18px rgba(101, 231, 255, 0.16);
+}
+
+.character-option.taken {
+  cursor: not-allowed;
+  opacity: 0.34;
+  filter: grayscale(1);
+}
+
+.character-option img {
+  width: 64px;
+  height: 64px;
+  margin: -3px auto 0;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.character-option span {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  left: 4px;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.lobby-character-avatar {
+  width: 36px;
+  height: 36px;
+  margin: -5px -4px -3px -5px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.unselected-character {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--yellow);
+  background: rgba(255, 209, 102, 0.08);
+  border: 1px dashed rgba(255, 209, 102, 0.38);
+  font-weight: 950;
+}
+
 .lobby-player {
   min-height: 54px;
   padding: 10px 12px;

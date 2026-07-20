@@ -122,21 +122,40 @@ export class GameRoom {
     this.roundTimerLimit = BALANCE.maxTimer;
     this.matchActiveTime = 0;
 
-    this.addHuman(hostSocket, settings.name || 'Host');
+    const hostCharacterId = settings.characterId
+      ?? (this.gameMode === 'bot' ? 1 : null);
+    this.addHuman(hostSocket, settings.name || 'Host', hostCharacterId);
   }
 
   touch() {
     this.lastActivityAt = Date.now();
   }
 
-  createPlayer({ id, socketId = null, name, isBot }) {
+  createPlayer({ id, socketId = null, name, isBot, preferredCharacterId = null }) {
     const color = PLAYER_COLORS[this.players.size % PLAYER_COLORS.length];
+    const usedCharacters = new Set(
+      [...this.players.values()].map((player) => player.characterId),
+    );
+    const firstAvailableCharacterId = Array.from(
+      { length: BALANCE.maxPlayers },
+      (_, index) => index + 1,
+    ).find((candidate) => !usedCharacters.has(candidate)) ?? 1;
+    const requestedCharacterId = Number(preferredCharacterId);
+    const characterId = Number.isInteger(requestedCharacterId)
+      && requestedCharacterId >= 1
+      && requestedCharacterId <= BALANCE.maxPlayers
+      && !usedCharacters.has(requestedCharacterId)
+      ? requestedCharacterId
+      : isBot
+        ? firstAvailableCharacterId
+        : null;
     return {
       id,
       socketId,
       name: sanitizeName(name, isBot ? 'Bot' : 'Runner'),
       isBot,
       color,
+      characterId,
       x: WORLD.centerX,
       y: WORLD.centerY,
       vx: 0,
@@ -160,7 +179,7 @@ export class GameRoom {
     };
   }
 
-  addHuman(socket, name) {
+  addHuman(socket, name, preferredCharacterId = null) {
     if (this.status !== 'lobby') {
       return { ok: false, error: 'The match has already started.' };
     }
@@ -177,6 +196,7 @@ export class GameRoom {
       socketId: socket.id,
       name,
       isBot: false,
+      preferredCharacterId,
     });
     this.players.set(player.id, player);
     socket.join(this.code);
@@ -260,10 +280,13 @@ export class GameRoom {
       this.status === 'lobby'
       && this.gameMode === 'mix'
       && this.humanCount() >= this.humanSlots
+      && [...this.players.values()]
+        .filter((player) => !player.isBot)
+        .every((player) => Number.isInteger(player.characterId))
     );
   }
 
-  start(socketId) {
+  start(socketId, preferredCharacterId = null) {
     if (socketId !== this.hostId) {
       return { ok: false, error: 'Only the host can start the match.' };
     }
@@ -271,11 +294,25 @@ export class GameRoom {
       return { ok: false, error: 'The match is already running.' };
     }
 
+    if (this.status === 'lobby' && preferredCharacterId !== null) {
+      const selection = this.setCharacter(socketId, preferredCharacterId);
+      if (!selection.ok) return selection;
+    }
+
     const humanCount = this.humanCount();
     if (humanCount < this.humanSlots) {
       return {
         ok: false,
         error: `Waiting for ${this.humanSlots - humanCount} more human player(s).`,
+      };
+    }
+    const unselectedHumans = [...this.players.values()].filter(
+      (player) => !player.isBot && !Number.isInteger(player.characterId),
+    );
+    if (unselectedHumans.length > 0) {
+      return {
+        ok: false,
+        error: `Waiting for ${unselectedHumans.length} player(s) to choose a character.`,
       };
     }
     this.fillConfiguredBots();
@@ -345,6 +382,31 @@ export class GameRoom {
     };
     player.lastInputSeq = Math.max(player.lastInputSeq, Number(payload.seq) || 0);
     this.touch();
+  }
+
+  setCharacter(playerId, value) {
+    if (this.status !== 'lobby') {
+      return { ok: false, error: 'Characters can only be changed in the lobby.' };
+    }
+    const player = this.players.get(playerId);
+    if (!player || player.isBot) {
+      return { ok: false, error: 'Player not found.' };
+    }
+    const characterId = Number(value);
+    if (!Number.isInteger(characterId) || characterId < 1 || characterId > BALANCE.maxPlayers) {
+      return { ok: false, error: 'Invalid character selection.' };
+    }
+    const isTaken = [...this.players.values()].some(
+      (candidate) => candidate.id !== playerId && candidate.characterId === characterId,
+    );
+    if (isTaken) {
+      return { ok: false, error: 'That character is already selected.' };
+    }
+
+    player.characterId = characterId;
+    this.touch();
+    this.broadcastLobby();
+    return { ok: true, characterId };
   }
 
   isNodeLockedForPlayer(player, nodeId, now = Date.now()) {
@@ -769,6 +831,8 @@ export class GameRoom {
   }
 
   tick(dt, now) {
+    if (this.status === 'lobby') return;
+
     if (this.status === 'countdown') {
       if (this.stateEndsAt && now >= this.stateEndsAt) {
         this.status = 'playing';
@@ -824,6 +888,7 @@ export class GameRoom {
           id: player.id,
           name: player.name,
           color: player.color,
+          characterId: player.characterId,
           isHost: player.id === this.hostId,
         })),
     };
@@ -839,6 +904,7 @@ export class GameRoom {
       name: player.name,
       isBot: player.isBot,
       color: player.color,
+      characterId: player.characterId,
       x: Number(player.x.toFixed(2)),
       y: Number(player.y.toFixed(2)),
       vx: Number(player.vx.toFixed(2)),

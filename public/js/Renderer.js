@@ -1,4 +1,17 @@
 const PLAYER_SPEED = 228;
+const CHARACTER_FOLDERS = Object.freeze({
+  1: 'char 1 female',
+  2: 'char 2 male',
+  3: 'char 3 male body',
+  4: 'char 4 female',
+  5: 'char 5 female',
+  6: 'cahr 6 male',
+  7: 'char 7 male',
+});
+const DIRECTIONS = Object.freeze(['up', 'down', 'left', 'right']);
+const RUN_FRAME_COUNT = 8;
+const SPRITE_SIZE = 84;
+const SPRITE_TOP_OFFSET = 68;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -34,7 +47,27 @@ export class Renderer {
     this.snapshot = null;
     this.localId = null;
     this.entities = new Map();
+    this.characterSprites = new Map();
     this.time = 0;
+    this.preloadCharacterSprites();
+  }
+
+  preloadCharacterSprites() {
+    for (const [characterId, folder] of Object.entries(CHARACTER_FOLDERS)) {
+      for (const direction of DIRECTIONS) {
+        this.loadCharacterSprite(characterId, folder, 'walk', direction, 1);
+        for (let frame = 1; frame <= RUN_FRAME_COUNT; frame += 1) {
+          this.loadCharacterSprite(characterId, folder, 'run', direction, frame);
+        }
+      }
+    }
+  }
+
+  loadCharacterSprite(characterId, folder, action, direction, frame) {
+    const key = `${characterId}:${action}:${direction}:${frame}`;
+    const image = new Image();
+    image.src = `/characters/${encodeURIComponent(folder)}/${action}/${direction}/${frame}.png`;
+    this.characterSprites.set(key, image);
   }
 
   setSnapshot(snapshot, localId) {
@@ -50,6 +83,9 @@ export class Renderer {
           renderY: player.y,
           targetX: player.x,
           targetY: player.y,
+          facing: 'down',
+          moving: false,
+          animationOffset: Math.random() * 0.5,
         };
         this.entities.set(player.id, entity);
       }
@@ -94,6 +130,7 @@ export class Renderer {
         const horizontal = Number(input.right) - Number(input.left);
         const vertical = Number(input.down) - Number(input.up);
         const magnitude = Math.hypot(horizontal, vertical);
+        this.updateEntityFacing(entity, horizontal, vertical);
         if (magnitude > 0) {
           entity.renderX += (horizontal / magnitude) * PLAYER_SPEED * dt;
           entity.renderY += (vertical / magnitude) * PLAYER_SPEED * dt;
@@ -102,10 +139,22 @@ export class Renderer {
         entity.renderX += (entity.targetX - entity.renderX) * correction;
         entity.renderY += (entity.targetY - entity.renderY) * correction;
       } else {
+        this.updateEntityFacing(entity, player.vx, player.vy);
         const interpolation = 1 - Math.exp(-13 * dt);
         entity.renderX += (entity.targetX - entity.renderX) * interpolation;
         entity.renderY += (entity.targetY - entity.renderY) * interpolation;
       }
+    }
+  }
+
+  updateEntityFacing(entity, horizontal, vertical) {
+    const magnitude = Math.hypot(horizontal, vertical);
+    entity.moving = magnitude > 5 || (magnitude > 0 && magnitude <= Math.SQRT2);
+    if (!entity.moving) return;
+    if (Math.abs(horizontal) > Math.abs(vertical)) {
+      entity.facing = horizontal < 0 ? 'left' : 'right';
+    } else {
+      entity.facing = vertical < 0 ? 'up' : 'down';
     }
   }
 
@@ -344,44 +393,71 @@ export class Renderer {
     const y = entity.renderY;
 
     ctx.save();
-    ctx.shadowColor = hexToRgba(player.color, 0.8);
-    ctx.shadowBlur = isLocal ? 28 : 18;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 9, 14, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     if (isLocal) {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(x, y, player.radius + 7 + Math.sin(this.time * 4) * 1.5, 0, Math.PI * 2);
+      ctx.ellipse(
+        x,
+        y + 8,
+        player.radius + 8 + Math.sin(this.time * 4) * 1.2,
+        11 + Math.sin(this.time * 4) * 0.6,
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.stroke();
     }
 
-    const gradient = ctx.createRadialGradient(x - 6, y - 8, 3, x, y, player.radius + 3);
-    gradient.addColorStop(0, '#ffffff');
-    gradient.addColorStop(0.18, player.color);
-    gradient.addColorStop(1, hexToRgba(player.color, 0.48));
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(x, y, player.radius, 0, Math.PI * 2);
-    ctx.fill();
+    const characterId = clamp(Number(player.characterId) || 1, 1, 7);
+    const action = entity.moving ? 'run' : 'walk';
+    const frame = entity.moving
+      ? (Math.floor((this.time + entity.animationOffset) * 12) % RUN_FRAME_COUNT) + 1
+      : 1;
+    const key = `${characterId}:${action}:${entity.facing}:${frame}`;
+    const sprite = this.characterSprites.get(key);
 
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    const angle = Math.atan2(player.vy, player.vx);
-    if (Math.hypot(player.vx, player.vy) > 5) {
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.beginPath();
-      ctx.moveTo(player.radius + 3, 0);
-      ctx.lineTo(player.radius - 4, -4);
-      ctx.lineTo(player.radius - 4, 4);
-      ctx.closePath();
-      ctx.fill();
+    ctx.imageSmoothingEnabled = false;
+    if (sprite?.complete && sprite.naturalWidth > 0) {
+      ctx.shadowColor = hexToRgba(player.color, 0.72);
+      ctx.shadowBlur = isLocal ? 15 : 9;
+      ctx.drawImage(
+        sprite,
+        Math.round(x - SPRITE_SIZE / 2),
+        Math.round(y - SPRITE_TOP_OFFSET),
+        SPRITE_SIZE,
+        SPRITE_SIZE,
+      );
+    } else {
+      this.drawCharacterFallback(ctx, x, y, player.color);
     }
     ctx.restore();
+  }
+
+  drawCharacterFallback(ctx, x, y, color) {
+    ctx.shadowColor = hexToRgba(color, 0.7);
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y - 23, 7, 0, Math.PI * 2);
+    ctx.fill();
+    roundedRectPath(ctx, x - 9, y - 16, 18, 22, 6);
+    ctx.fill();
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - 5, y + 3);
+    ctx.lineTo(x - 8, y + 12);
+    ctx.moveTo(x + 5, y + 3);
+    ctx.lineTo(x + 8, y + 12);
+    ctx.strokeStyle = color;
+    ctx.stroke();
   }
 
   drawPlayerStats(player, entity) {

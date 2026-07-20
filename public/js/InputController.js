@@ -4,17 +4,19 @@ export class InputController {
     this.enabled = false;
 
     window.addEventListener('keydown', (event) => {
-      if (this.isMovementKey(event.code)) {
-        event.preventDefault();
-        this.keys.add(event.code);
+      if (!this.isMovementKey(event.code)) return;
+      if (!this.enabled || this.isFormControl(event.target)) {
+        this.keys.delete(event.code);
+        return;
       }
+      event.preventDefault();
+      this.keys.add(event.code);
     });
 
     window.addEventListener('keyup', (event) => {
-      if (this.isMovementKey(event.code)) {
-        event.preventDefault();
-        this.keys.delete(event.code);
-      }
+      if (!this.isMovementKey(event.code)) return;
+      this.keys.delete(event.code);
+      if (this.enabled && !this.isFormControl(event.target)) event.preventDefault();
     });
 
     window.addEventListener('blur', () => this.keys.clear());
@@ -22,6 +24,11 @@ export class InputController {
 
   isMovementKey(code) {
     return ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(code);
+  }
+
+  isFormControl(target) {
+    return target instanceof Element
+      && (target.matches('input, textarea, select, button') || target.isContentEditable);
   }
 
   getState() {

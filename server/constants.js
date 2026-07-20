@@ -8,7 +8,7 @@ export const WORLD = Object.freeze({
 export const BALANCE = Object.freeze({
   minPlayers: 3,
   minMixedHumans: 2,
-  maxPlayers: 8,
+  maxPlayers: 7,
   playerRadius: 16,
   playerSpeed: 228,
   botSpeedMultiplier: 0.94,
